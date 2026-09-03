@@ -154,28 +154,42 @@
   border-color: transparent;
 }
 
-/* Ярлык-пилюля висит поверх верхнего края — приём из Alex Carter */
+/* Ярлык не лежит на карточке, а вырезает себе место в её углу:
+   плашка отступает, ярлык садится в вырез. Приём из Jon Daniel. */
+
+.tile--notch {
+  --notch-h: 2.15rem;
+  padding-top: calc(var(--notch-h) + clamp(1rem, 1.8vw, 1.5rem));
+}
+
+.tile--notch::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--notch-w, 9rem);
+  height: var(--notch-h);
+  background: var(--paper);
+  border-top-left-radius: var(--radius);
+  border-bottom-right-radius: 15px;
+  z-index: 1;
+}
+
 .tile-label {
   position: absolute;
   top: 0;
-  left: clamp(1.35rem, 2.4vw, 2rem);
-  transform: translateY(-50%);
-  padding: 0.3rem 0.8rem;
-  border-radius: 999px;
-  background: var(--paper);
-  border: 1px solid var(--rule);
+  left: 0;
+  z-index: 2;
+  height: var(--notch-h);
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 0.1rem 1.1rem;
   font-size: var(--t-label);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 600;
-  color: var(--ink-muted);
+  color: var(--ink);
   white-space: nowrap;
-}
-
-.tile--moss .tile-label {
-  background: var(--moss-deep);
-  border-color: transparent;
-  color: var(--moss-on);
 }
 
 /* Приводочные метки: только на плитках с работой */
@@ -211,12 +225,13 @@
 
 .t-card { grid-column: span 4; grid-row: span 2; }
 .t-say  { grid-column: span 8; }
-.t-do   { grid-column: span 4; }
-.t-art  { grid-column: span 4; }
+.t-s1   { grid-column: span 4; }
+.t-s2   { grid-column: span 4; }
+.t-s3   { grid-column: span 12; }
 
 @media (max-width: 900px) {
   .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .t-card, .t-say, .t-do, .t-art { grid-column: span 4; grid-row: auto; }
+  .t-card, .t-say, .t-s1, .t-s2, .t-s3 { grid-column: span 4; grid-row: auto; }
 }
 
 .hero {
@@ -362,37 +377,6 @@
   font-size: clamp(0.95rem, 1.4vw, 1.08rem);
   letter-spacing: -0.025em;
   line-height: 1.2;
-}
-
-/* ── Плитка с иллюстрацией ─────────────────────────────────
-   Ветка мха нарисована владельцем, отсюда мох в палитре.
-   Качается маятником от прокрутки: экран отвечает на
-   присутствие, а не просто лежит. */
-
-.t-art {
-  padding: 0;
-  overflow: hidden;
-  background: var(--moss-deep);
-  border-color: transparent;
-  min-height: clamp(150px, 20vw, 230px);
-}
-
-.t-art .tile-label { left: 1.1rem; }
-
-.bough-frame {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-
-.bough {
-  width: 118%;
-  height: 118%;
-  object-fit: cover;
-  transform-origin: 50% 0%;
-  will-change: transform;
 }
 
 /* ── Действие ──────────────────────────────────────────── */
@@ -548,4 +532,72 @@
 
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; }
+}
+
+/* ── Краски бенто ──────────────────────────────────────────
+   Мох и охра — зелень и земля, как в агро-упаковке, которую
+   Сулейман делал. Тёмная плитка держит третий вес. */
+
+.tile--amber {
+  background: var(--amber);
+  color: var(--amber-on);
+  border-color: transparent;
+}
+
+.tile--night {
+  background: var(--night);
+  color: var(--night-ink);
+  border-color: transparent;
+}
+
+/* В цветной плитке вырез повторяет цвет страницы, а подпись
+   ярлыка перекрашивается: на охре серый текст пропадает */
+.tile--amber .tile-label,
+.tile--night .tile-label,
+.tile--moss .tile-label { color: var(--ink); }
+
+/* ── Визитка: роль крупно, имя следом ──────────────────── */
+
+.card-role-big {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(1.1rem, 1.95vw, 1.65rem);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  margin: 0;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.card-who {
+  font-size: var(--t-sm);
+  opacity: 0.78;
+  margin: 0.6rem 0 0;
+}
+
+/* ── Услуга как плитка ─────────────────────────────────── */
+
+.svc { justify-content: space-between; gap: var(--gap-l); }
+
+.svc-idx {
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+.svc-name {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(1.15rem, 2vw, 1.6rem);
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  margin: 0;
+}
+
+.svc-what {
+  font-size: var(--t-sm);
+  opacity: 0.78;
+  margin: 0.5rem 0 0;
+  max-width: 34ch;
 }

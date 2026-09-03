@@ -11,14 +11,12 @@ import { initSymbiote } from './symbiote.js';
 import { initLettering } from './lettering.js';
 import { initWork } from './work.js';
 import { initTools } from './tools.js';
-import { initBough } from './bough.js';
 
 const intro = initIntro(document);
 
 initCursor();
 initSymbiote();
 initWork(document);
-initBough(document);
 
 renderProfile().then(() => {
   initTools(document);

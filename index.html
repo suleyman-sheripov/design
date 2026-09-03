@@ -81,8 +81,8 @@
     <div class="shell">
       <div class="bento">
 
-        <article class="tile tile--moss t-card reveal">
-          <span class="tile-label">Визитка</span>
+        <article class="tile tile--moss tile--notch t-card reveal" style="--notch-w: 7.4rem">
+          <span class="tile-label">Обо мне</span>
 
           <div class="card-top">
             <!-- Место под фотографию: пока в плашке живёт знак.
@@ -103,8 +103,8 @@
           </div>
 
           <div>
-            <p class="card-name">Сулейман<br>Шерипов</p>
-            <p class="card-role">Графический и UI/UX дизайнер</p>
+            <p class="card-role-big">Графический<br>и UI/UX<br>дизайнер</p>
+            <p class="card-who">Сулейман Шерипов</p>
           </div>
 
           <div class="card-foot">
@@ -128,20 +128,27 @@
           </a>
         </article>
 
-        <article class="tile tile--marked t-do reveal">
-          <span class="tile-label">Что делаю</span>
-          <ol class="services">
-            <li><span class="idx">01</span><span class="what">Фирменный стиль</span></li>
-            <li><span class="idx">02</span><span class="what">Упаковка под печать</span></li>
-            <li><span class="idx">03</span><span class="what">Сайты и интерфейсы</span></li>
-          </ol>
+        <article class="tile tile--amber tile--notch svc t-s1 reveal" style="--notch-w: 4.4rem">
+          <span class="tile-label">01</span>
+          <div>
+            <p class="svc-name">Фирменный стиль</p>
+            <p class="svc-what">Логотип, палитра, шрифты, носители и правила, по которым это живёт дальше.</p>
+          </div>
         </article>
 
-        <article class="tile t-art reveal">
-          <span class="tile-label">Своя графика</span>
-          <div class="bough-frame" aria-hidden="true">
-            <img class="bough" id="bough" src="assets/branch.webp" alt=""
-                 width="1095" height="980" fetchpriority="low">
+        <article class="tile tile--marked svc t-s2 reveal">
+          <div>
+            <p class="svc-idx">02</p>
+            <p class="svc-name">Упаковка под печать</p>
+            <p class="svc-what">Вектор, вылеты, CMYK и флексопечать. Отдаю макет, который типография примет без правок.</p>
+          </div>
+        </article>
+
+        <article class="tile tile--night tile--notch svc t-s3 reveal" style="--notch-w: 4.4rem">
+          <span class="tile-label">03</span>
+          <div>
+            <p class="svc-name">Сайты и интерфейсы</p>
+            <p class="svc-what">Структура, прототип, макет и UI-кит — в том виде, в котором разработчик заберёт без вопросов.</p>
           </div>
         </article>
 
