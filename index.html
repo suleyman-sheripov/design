@@ -81,9 +81,15 @@
     <div class="shell">
       <div class="bento">
 
-        <article class="tile tile--moss tile--notch t-card reveal" style="--notch-w: 7.4rem">
-          <span class="tile-label">Обо мне</span>
+        <article class="tile tile--moss tile--notch t-card reveal">
+          <!-- Ярлык — обычный элемент ряда: его ширина и есть ширина
+               выреза, заливка добирает остаток. Разойтись нечему. -->
+          <div class="notch-row">
+            <span class="tile-label">Обо мне</span>
+            <span class="notch-fill" aria-hidden="true"></span>
+          </div>
 
+          <div class="tile-body">
           <div class="card-top">
             <!-- Место под фотографию: пока в плашке живёт знак.
                  Появится снимок — сюда <img class="avatar-photo"> -->
@@ -111,6 +117,7 @@
             <a href="mailto:suleyman.sheripov@icloud.com" data-bind="email" data-bind-href="mailto:"
                data-cursor="link" data-cursor-label="Написать">suleyman.sheripov@icloud.com</a>
             <span data-bind="city">Минск</span>
+          </div>
           </div>
         </article>
 

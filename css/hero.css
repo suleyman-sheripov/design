@@ -138,12 +138,14 @@
 
 .tile {
   --notch-h: 2.15rem;
+  --pad-x: clamp(1.35rem, 2.4vw, 2rem);
+  --pad-y: clamp(0.9rem, 1.6vw, 1.35rem);
+  --tile-bg: var(--paper-raised);
+
   position: relative;
   border-radius: var(--radius);
-  padding: calc(var(--notch-h) + clamp(0.9rem, 1.6vw, 1.35rem))
-           clamp(1.35rem, 2.4vw, 2rem)
-           clamp(1.35rem, 2.4vw, 2rem);
-  background: var(--paper-raised);
+  padding: calc(var(--notch-h) + var(--pad-y)) var(--pad-x) var(--pad-x);
+  background: var(--tile-bg);
   border: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
@@ -151,43 +153,63 @@
   min-width: 0;
 }
 
-.tile--moss {
-  background: var(--moss);
-  color: var(--moss-on);
-  border-color: transparent;
+.tile--moss  { --tile-bg: var(--moss);  color: var(--moss-on);  border-color: transparent; }
+.tile--amber { --tile-bg: var(--amber); color: var(--amber-on); border-color: transparent; }
+.tile--night { --tile-bg: var(--night); color: var(--night-ink); border-color: transparent; }
+
+/* ── Плитка с вырезом ──────────────────────────────────────
+   Ширину выреза задаёт сам ярлык: он обычный элемент потока,
+   а заливка занимает то, что осталось. Синхронизировать
+   нечего, поэтому подпись физически не может вылезти за вырез
+   — что и происходило, пока ширина стояла числом в rem. */
+
+.tile--notch {
+  background: none;
+  border: none;
+  padding: 0;
+  gap: 0;
 }
 
-/* Ярлык не лежит на карточке, а вырезает себе место в её углу:
-   плашка отступает, ярлык садится в вырез. Приём из Jon Daniel. */
-
-.tile--notch::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--notch-w, 9rem);
-  height: var(--notch-h);
-  background: var(--paper);
-  border-top-left-radius: var(--radius);
-  border-bottom-right-radius: 15px;
-  z-index: 1;
+.notch-row {
+  display: flex;
+  align-items: stretch;
+  min-height: var(--notch-h);
 }
 
-.tile-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2;
-  height: var(--notch-h);
+.tile--notch .tile-label {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  padding-inline: 0.1rem 1.1rem;
+  height: var(--notch-h);
+  padding-inline: 0.1rem 1.05rem;
   font-size: var(--t-label);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 600;
   color: var(--ink);
   white-space: nowrap;
+}
+
+/* Заливка добирает остаток ряда. Низ-лево скруглён мягче —
+   это вогнутый стык, он не должен спорить с внешним радиусом */
+.notch-fill {
+  flex: 1;
+  min-width: var(--radius);
+  background: var(--tile-bg);
+  border-top-right-radius: var(--radius);
+  border-bottom-left-radius: 16px;
+}
+
+/* Верх-право у тела квадратный: там заливка продолжается сверху */
+.tile--notch .tile-body {
+  flex: 1;
+  background: var(--tile-bg);
+  border-radius: var(--radius) 0 var(--radius) var(--radius);
+  padding: var(--pad-y) var(--pad-x) var(--pad-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-m);
+  min-width: 0;
 }
 
 /* Приводочные метки: только на плитках с работой */
@@ -533,23 +555,8 @@
    Мох и охра — зелень и земля, как в агро-упаковке, которую
    Сулейман делал. Тёмная плитка держит третий вес. */
 
-.tile--amber {
-  background: var(--amber);
-  color: var(--amber-on);
-  border-color: transparent;
-}
-
-.tile--night {
-  background: var(--night);
-  color: var(--night-ink);
-  border-color: transparent;
-}
-
 /* В цветной плитке вырез повторяет цвет страницы, а подпись
    ярлыка перекрашивается: на охре серый текст пропадает */
-.tile--amber .tile-label,
-.tile--night .tile-label,
-.tile--moss .tile-label { color: var(--ink); }
 
 /* ── Визитка: роль крупно, имя следом ──────────────────── */
 
