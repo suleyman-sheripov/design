@@ -1,0 +1,10 @@
+# Служебное окружение агента — в репозитории сайта ему не место
+.agents/
+.claude/skills/
+.claude/agents/
+.claude/settings.local.json
+skills-lock.json
+
+# Мусор ОС
+Thumbs.db
+.DS_Store

@@ -1,0 +1,373 @@
+/* Шапка со знаком забирает верх экрана, поэтому первый экран
+   считает высоту за её вычетом. Край карточки внизу обрезается
+   границей окна — это и есть тяга вниз. */
+.hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 11rem);
+  padding-top: var(--gap-l);
+}
+
+/* ── Интро ──────────────────────────────────────────────
+   Сцена живёт в логических 800×200 и масштабируется целиком,
+   поэтому все координаты в intro.js — фиксированные пиксели. */
+
+.intro {
+  display: flex;
+  justify-content: flex-start;
+  overflow: hidden;
+  margin-bottom: var(--gap-l);
+}
+
+.intro-scene {
+  position: relative;
+  width: 800px;
+  height: 200px;
+  flex: none;
+  transform-origin: left center;
+}
+
+.intro-scene > * {
+  position: absolute;
+  will-change: transform, opacity;
+}
+
+/* Пропорция замка задана знаком: 483×300 в Figma совпадает
+   с Unbounded SemiBold на кегле 400. Значит высота знака —
+   ровно 0.75 кегля, то есть выравнивание по высоте прописных. */
+
+.intro-ball {
+  width: 46px;
+  height: 46px;
+  top: 87px;
+  border-radius: 50%;
+  background: var(--moss);
+}
+
+/* Блик — чтобы качение читалось, а не выглядело скольжением */
+.intro-ball::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--moss-on);
+  opacity: 0.5;
+  transform: translateX(11px);
+}
+
+.intro-glyph,
+.intro-rest {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: 76px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  top: 81px;
+  opacity: 0;
+}
+
+.intro-rest { white-space: nowrap; }
+
+.intro-mark {
+  top: 83px;
+  opacity: 0;
+}
+
+/* 57 = 0.75 × 76. Ширина следует из viewBox 483:300 */
+.intro-mark svg {
+  width: 91.8px;
+  height: 57px;
+  color: var(--ink);
+}
+
+.intro-dot {
+  width: 18px;
+  height: 18px;
+  top: 122px;
+  border-radius: 50%;
+  background: var(--moss);
+  opacity: 0;
+}
+
+/* ── Содержимое первого экрана ─────────────────────────── */
+
+.hero-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-m);
+}
+
+/* ch здесь считается от кегля самого заголовка — это и нужно */
+.hero-title {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: var(--t-hero);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  max-width: 14ch;
+  margin: 0;
+}
+
+.hero-title .quiet { color: var(--ink-muted); }
+.hero-title .accent { color: var(--moss); }
+
+/* Аватар размером с букву — фото есть, но сайт не про лицо.
+   Кегль ужимает только внутренний span: поставить font-size здесь
+   значит схлопнуть и ширину, она задана в em. */
+/* Центр плашки совпадает с серединой прописных, а не с базовой
+   линией: cap/2 − высота/2 = 0.36em − 0.37em ≈ −0.01em */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -0.01em;
+  width: 0.74em;
+  height: 0.74em;
+  border-radius: 0.2em;
+  margin-inline: 0.14em;
+  overflow: hidden;
+  background: var(--moss);
+}
+
+/* До появления фотографии в плашке живёт сам знак — это выглядит
+   как элемент фирменного стиля, а не как заглушка */
+.avatar svg {
+  width: 62%;
+  height: auto;
+  color: var(--moss-on);
+}
+
+.avatar-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-lead {
+  color: var(--ink-muted);
+  max-width: 46ch;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-s);
+  align-items: center;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  padding: 0.9rem 1.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--dur-tap) var(--ease-out);
+  will-change: transform;
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--moss);
+  flex: none;
+}
+
+/* Элементы, которые выезжают после интро */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-enter) var(--ease-out),
+    transform var(--dur-enter) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* ── Шапка со знаком ───────────────────────────────────── */
+
+.masthead {
+  padding-block: clamp(1.5rem, 4vw, 2.75rem) 0;
+}
+
+/* ── Первый экран ──────────────────────────────────────── */
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.hero-facts {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  margin: 0;
+  padding: 1.25rem 0 0;
+  border-top: 1px solid var(--rule);
+  width: 100%;
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+}
+
+.hero-facts li { position: relative; }
+
+.hero-facts li + li::before {
+  content: "";
+  position: absolute;
+  left: -0.75rem;
+  top: 0.55em;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--moss);
+}
+
+/* ── Список опыта ──────────────────────────────────────── */
+
+.rail-head {
+  margin: 0 0 var(--gap-s);
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.track {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.track-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding: 0.9rem 1.25rem;
+  border-radius: 999px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  transition:
+    transform var(--dur-tap) var(--ease-out),
+    border-color var(--dur-tap) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .track-item:hover {
+    transform: translateX(4px);
+    border-color: var(--moss);
+  }
+}
+
+.track-role {
+  font-size: var(--t-sm);
+  color: var(--ink-muted);
+  line-height: 1.35;
+}
+
+.track-client {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.track-period {
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.track-note {
+  grid-column: 1 / -1;
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  line-height: 1.5;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height var(--dur-enter) var(--ease-out),
+    opacity var(--dur-enter) var(--ease-out);
+}
+
+/* Раскрытие по наведению — на тач-экранах заметка видна всегда */
+@media (hover: hover) {
+  .track-item:hover .track-note,
+  .track-item:focus-within .track-note {
+    max-height: 5rem;
+    opacity: 1;
+  }
+}
+
+@media (hover: none) {
+  .track-note { max-height: 5rem; opacity: 1; padding-top: 0.4rem; }
+  .track-item { border-radius: var(--radius); }
+}
+
+/* ── Край следующей секции ─────────────────────────────── */
+
+.peek {
+  margin-top: clamp(2rem, 5vw, 3.5rem);
+  margin-bottom: calc(var(--gap-l) * -1 - 2.5rem);
+}
+
+.peek-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.5rem clamp(1.25rem, 4vw, 2.25rem) 3rem;
+  border: 1px solid var(--rule);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--paper-raised);
+}
+
+.peek-num {
+  font-size: var(--t-label);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--moss-deep);
+}
+
+.peek-title {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}

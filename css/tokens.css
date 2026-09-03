@@ -1,0 +1,61 @@
+/* Дизайн-токены. Всё остальное берёт цвета и размеры отсюда. */
+
+:root {
+  /* Бумага и чернила */
+  --paper:        #F0EADE;
+  --paper-raised: #FBF7EF;
+  --ink:          #16130F;
+  --ink-muted:    #7B7365;
+  --rule:         #D5CBB8;
+
+  /* Мох. Глубокий вариант — для мелкого текста, где основной сереет. */
+  --moss:         #4A5D48;
+  --moss-deep:    #3A4A39;
+  --moss-on:      #FBF7EF;
+
+  /* Тёмная зона кейсов */
+  --night:        #14120C;
+  --night-raised: #1E1B14;
+  --night-ink:    #F0EADE;
+
+  /* Шрифты */
+  --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --font-body:    "Golos Text", "Inter", system-ui, -apple-system, sans-serif;
+  --font-reading: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+
+  /* Начертания: 600 вместо 800 — на крупном кегле Unbounded 800 забивается */
+  --w-display: 600;
+  --w-body:    400;
+  --w-strong:  600;
+
+  /* Шкала кегля */
+  --t-hero:  clamp(1.85rem, 3.5vw, 3rem);
+  --t-h2:    clamp(1.7rem, 4.4vw, 3.2rem);
+  --t-h3:    clamp(1.15rem, 2.2vw, 1.5rem);
+  --t-body:  1.0625rem;
+  --t-sm:    0.9375rem;
+  --t-xs:    0.8125rem;
+  --t-label: 0.6875rem;
+
+  /* Ритм */
+  --gap-xs: 0.5rem;
+  --gap-s:  0.85rem;
+  --gap-m:  1.5rem;
+  --gap-l:  clamp(2rem, 5vw, 3.5rem);
+  --gap-xl: clamp(3rem, 9vw, 7rem);
+
+  --pad-page: clamp(1.15rem, 5vw, 4rem);
+  --measure:  66ch;
+  --shell:    1180px;
+
+  --radius:   26px;
+  --radius-s: 16px;
+
+  /* Кривые плавности из спецификации движения */
+  --ease-out:  cubic-bezier(.16, 1, .3, 1);
+  --ease-fall: cubic-bezier(.55, .06, .68, .19);
+  --ease-roll: cubic-bezier(.15, .62, .36, 1);
+
+  --dur-tap:   180ms;
+  --dur-enter: 420ms;
+}
