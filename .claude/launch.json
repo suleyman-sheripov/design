@@ -1,6 +1,14 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "site", "runtimeExecutable": "node", "runtimeArgs": [".claude/dev-server.mjs"], "port": 4321 }
+    {
+      "name": "site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/dev-server.mjs"
+      ],
+      "port": 4321,
+      "autoPort": true
+    }
   ]
 }

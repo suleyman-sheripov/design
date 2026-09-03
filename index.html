@@ -77,34 +77,47 @@
 </header>
 
 <main>
-  <section class="hero railed">
-    <!-- Ветка из собственной иллюстрации владельца: отсюда взят мох
-         в палитре. Качается маятником от прокрутки, поэтому первый
-         экран реагирует на присутствие, а не просто лежит. -->
-    <div class="bough-frame" aria-hidden="true">
-      <img class="bough" id="bough" src="assets/branch.webp" alt="" width="1095" height="980" fetchpriority="low">
-    </div>
-
+  <section class="hero">
     <div class="shell">
+      <div class="bento">
 
-      <p class="kicker-name reveal">
-        Сулейман<!--
-     --><span class="avatar" aria-hidden="true"><svg viewBox="0 0 483 300" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M40 0H120.6C120.6 0 80.6 43.4 80.6 77.2C80.6 111.1 120.9 120.6 120.6 154.5C120.3 187.7 80.6 230 80.6 230H226.2V0H301.8V154.2H407.4V0H483V300H407.4V230H301.8V300H0V230C0 196.7 39.7 187.7 40 154.5C40.3 120.6 0 111.1 0 77.2C0 43.4 40 0 40 0Z"/></svg></span><!--
-     -->Шерипов<span class="where">графический и UI/UX дизайнер</span>
-      </p>
+        <article class="tile tile--moss t-card reveal">
+          <span class="tile-label">Визитка</span>
 
-      <h1 class="statement reveal">
-        Делаю то,<br>что увидит<br><span class="thin">ваш клиент</span>
-      </h1>
+          <div class="card-top">
+            <!-- Место под фотографию: пока в плашке живёт знак.
+                 Появится снимок — сюда <img class="avatar-photo"> -->
+            <span class="avatar avatar--card" aria-hidden="true">
+              <svg viewBox="0 0 483 300" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M40 0H120.6C120.6 0 80.6 43.4 80.6 77.2C80.6 111.1 120.9 120.6 120.6 154.5C120.3 187.7 80.6 230 80.6 230H226.2V0H301.8V154.2H407.4V0H483V300H407.4V230H301.8V300H0V230C0 196.7 39.7 187.7 40 154.5C40.3 120.6 0 111.1 0 77.2C0 43.4 40 0 40 0Z"/></svg>
+            </span>
 
-      <div class="hero-cols">
-        <ol class="services reveal">
-          <li><span class="idx">01</span><span class="what">Фирменный стиль</span></li>
-          <li><span class="idx">02</span><span class="what">Упаковка под печать</span></li>
-          <li><span class="idx">03</span><span class="what">Сайты и интерфейсы</span></li>
-        </ol>
+            <svg class="stamp" id="stamp" viewBox="0 0 100 100" aria-hidden="true">
+              <defs>
+                <path id="stampRing" d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0"/>
+              </defs>
+              <g class="stamp-ring">
+                <text><textPath href="#stampRing" startOffset="0">УПАКОВКА · ФИРМЕННЫЙ СТИЛЬ · ИНТЕРФЕЙСЫ · </textPath></text>
+              </g>
+              <circle cx="50" cy="50" r="4.5" fill="currentColor" opacity="0.85"/>
+            </svg>
+          </div>
 
-        <div class="hero-aside reveal">
+          <div>
+            <p class="card-name">Сулейман<br>Шерипов</p>
+            <p class="card-role">Графический и UI/UX дизайнер</p>
+          </div>
+
+          <div class="card-foot">
+            <a href="mailto:suleyman.sheripov@icloud.com" data-bind="email" data-bind-href="mailto:"
+               data-cursor="link" data-cursor-label="Написать">suleyman.sheripov@icloud.com</a>
+            <span data-bind="city">Минск</span>
+          </div>
+        </article>
+
+        <article class="tile t-say reveal">
+          <h1 class="statement">
+            Делаю то, что увидит <span class="thin">ваш клиент</span>
+          </h1>
           <p class="hero-lead">
             <b>Больше года на коммерческом фрилансе.</b> Веду проект целиком:
             от концепции и презентации решения до макета в печать или
@@ -113,18 +126,35 @@
           <a class="cta" href="#contact" data-symbiote data-cursor="link" data-cursor-label="К контактам">
             <span class="cta-text">Обсудить задачу</span>
           </a>
-        </div>
+        </article>
+
+        <article class="tile tile--marked t-do reveal">
+          <span class="tile-label">Что делаю</span>
+          <ol class="services">
+            <li><span class="idx">01</span><span class="what">Фирменный стиль</span></li>
+            <li><span class="idx">02</span><span class="what">Упаковка под печать</span></li>
+            <li><span class="idx">03</span><span class="what">Сайты и интерфейсы</span></li>
+          </ol>
+        </article>
+
+        <article class="tile t-art reveal">
+          <span class="tile-label">Своя графика</span>
+          <div class="bough-frame" aria-hidden="true">
+            <img class="bough" id="bough" src="assets/branch.webp" alt=""
+                 width="1095" height="980" fetchpriority="low">
+          </div>
+        </article>
+
       </div>
 
       <p class="fallback">
         Работы, опыт и инструменты подгружаются скриптом. Если он выключен,
         напишите на suleyman.sheripov@icloud.com, пришлю всё ссылкой.
       </p>
-
     </div>
   </section>
 
-  <section class="work railed" id="work" data-tone="night" aria-labelledby="workTitle">
+  <section class="work" id="work" data-tone="night" aria-labelledby="workTitle">
     <div class="shell">
       <div class="sec-head reveal">
         <span class="sec-index">01</span>
@@ -139,7 +169,7 @@
     </div>
   </section>
 
-  <section class="ledger railed" id="experience" aria-labelledby="expTitle">
+  <section class="ledger" id="experience" aria-labelledby="expTitle">
     <div class="shell">
       <div class="sec-head reveal">
         <span class="sec-index">02</span>
@@ -150,7 +180,7 @@
     </div>
   </section>
 
-  <section class="tools railed" id="tools" aria-labelledby="toolsTitle">
+  <section class="tools" id="tools" aria-labelledby="toolsTitle">
     <div class="shell">
       <div class="sec-head reveal">
         <span class="sec-index">03</span>
@@ -167,7 +197,7 @@
     </div>
   </section>
 
-  <section class="contact railed" id="contact" aria-labelledby="contactTitle">
+  <section class="contact" id="contact" aria-labelledby="contactTitle">
     <div class="shell">
       <div class="sec-head reveal">
         <span class="sec-index">04</span>
@@ -207,7 +237,7 @@
   </section>
 </main>
 
-<footer class="colophon railed">
+<footer class="colophon">
   <div class="shell">
     <p class="colophon-row">
       <span><b>Сулейман Шерипов</b>, <span data-bind="city">Минск</span></span>
