@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "css/hero.css"
+        ],
+        "createdAt": "2026-09-03T12:51:01.624Z",
+        "reason": "intro-ball::after — блик внутри катящегося шарика в интро, а не карточка: border не используется вовсе, смещение нужно чтобы читалось вращение"
+      }
+    ]
+  }
+}
