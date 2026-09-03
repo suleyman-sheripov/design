@@ -137,9 +137,12 @@
 /* ── Плитка ────────────────────────────────────────────── */
 
 .tile {
+  --notch-h: 2.15rem;
   position: relative;
   border-radius: var(--radius);
-  padding: clamp(1.35rem, 2.4vw, 2rem);
+  padding: calc(var(--notch-h) + clamp(0.9rem, 1.6vw, 1.35rem))
+           clamp(1.35rem, 2.4vw, 2rem)
+           clamp(1.35rem, 2.4vw, 2rem);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   display: flex;
@@ -156,11 +159,6 @@
 
 /* Ярлык не лежит на карточке, а вырезает себе место в её углу:
    плашка отступает, ярлык садится в вырез. Приём из Jon Daniel. */
-
-.tile--notch {
-  --notch-h: 2.15rem;
-  padding-top: calc(var(--notch-h) + clamp(1rem, 1.8vw, 1.5rem));
-}
 
 .tile--notch::before {
   content: "";
@@ -223,15 +221,12 @@
   align-items: stretch;
 }
 
-.t-card { grid-column: span 4; grid-row: span 2; }
+.t-card { grid-column: span 4; }
 .t-say  { grid-column: span 8; }
-.t-s1   { grid-column: span 4; }
-.t-s2   { grid-column: span 4; }
-.t-s3   { grid-column: span 12; }
 
 @media (max-width: 900px) {
   .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .t-card, .t-say, .t-s1, .t-s2, .t-s3 { grid-column: span 4; grid-row: auto; }
+  .t-card, .t-say { grid-column: span 4; }
 }
 
 .hero {
@@ -600,4 +595,75 @@
   opacity: 0.78;
   margin: 0.5rem 0 0;
   max-width: 34ch;
+}
+
+/* ── Бегущая строка ────────────────────────────────────────
+   Услуги перечислением: списком из трёх пунктов они выглядели
+   куце, а строкой читаются как ассортимент. Лента едет
+   постоянно, поэтому это CSS-анимация — она идёт мимо основного
+   потока и не спотыкается, пока страница что-то грузит. */
+
+.ticker {
+  --ticker-speed: 34s;
+  position: relative;
+  overflow: hidden;
+  margin-top: clamp(1.5rem, 3vw, 2.5rem);
+  padding-block: clamp(0.85rem, 1.6vw, 1.15rem);
+  border-block: 1px solid var(--rule);
+  user-select: none;
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-run var(--ticker-speed) linear infinite;
+}
+
+/* Второй проход помечен aria-hidden: диктор не должен читать
+   один и тот же список дважды */
+.ticker-run {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticker-run li {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 2.75rem);
+  padding-inline-end: clamp(1.5rem, 3vw, 2.75rem);
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(0.95rem, 1.7vw, 1.35rem);
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+}
+
+/* Разделитель — знак, а не типографская звёздочка */
+.ticker-run li::after {
+  content: "";
+  width: 0.42em;
+  height: 0.42em;
+  border-radius: 50%;
+  background: var(--moss);
+  flex: none;
+}
+
+@keyframes ticker-run {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (hover: hover) {
+  .ticker:hover .ticker-track { animation-play-state: paused; }
+}
+
+/* Постоянное движение — первое, что мешает при чувствительности
+   к анимации: лента замирает и остаётся читаемым списком */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+  .ticker { overflow-x: auto; }
 }
