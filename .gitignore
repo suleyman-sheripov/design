@@ -8,3 +8,4 @@ skills-lock.json
 # Мусор ОС
 Thumbs.db
 .DS_Store
+.impeccable/

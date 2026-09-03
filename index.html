@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Шерипов — фирменный стиль, упаковка, интерфейсы</title>
-<meta name="description" content="Графический и UI/UX дизайнер из Минска. Фирменный стиль, упаковка под печать и интерфейсы — от концепции до макета в печать или передачи разработчику.">
+<title>Шерипов. Фирменный стиль, упаковка, интерфейсы</title>
+<meta name="description" content="Графический и UI/UX дизайнер из Минска. Фирменный стиль, упаковка под печать и интерфейсы: от концепции до макета в печать или передачи разработчику.">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="Шерипов — фирменный стиль, упаковка, интерфейсы">
+<meta property="og:title" content="Шерипов. Фирменный стиль, упаковка, интерфейсы">
 <meta property="og:description" content="Графический и UI/UX дизайнер из Минска. Фирменный стиль, упаковка под печать и интерфейсы.">
 <meta property="og:locale" content="ru_RU">
 <meta name="theme-color" content="#F0EADE">
@@ -20,7 +20,25 @@
 
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/cursor.css">
 <link rel="stylesheet" href="css/hero.css">
+<link rel="stylesheet" href="css/work.css">
+<link rel="stylesheet" href="css/tools.css">
+<link rel="stylesheet" href="css/contact.css">
+
+<noscript><style>
+  /* Без скриптов замок не собрать: показываем имя набором,
+     а разделы, которые приходят из JSON, сворачиваем и объясняем */
+  .intro { display: none; }
+  .masthead-name {
+    position: static; width: auto; height: auto;
+    margin: 0; clip-path: none;
+    font-family: var(--font-display); font-weight: 600; font-size: 1.05rem;
+  }
+  .reveal { opacity: 1; transform: none; }
+  .rail, .kit, .ledger-list, .work-status { display: none; }
+  .fallback { display: block; }
+</style></noscript>
 </head>
 <body>
 
@@ -42,10 +60,16 @@
           <span class="intro-rest" id="introRest">ERIPOV</span>
         </div>
       </div>
-      <span class="sr-only">Сулейман Шерипов — графический и UI/UX дизайнер</span>
+      <span class="masthead-name sr-only">Сулейман Шерипов, графический и UI/UX дизайнер</span>
+
+      <nav class="masthead-nav" aria-label="Разделы страницы">
+        <a href="#work">Работы</a>
+        <a href="#experience">Опыт</a>
+        <a href="#contact">Связаться</a>
+      </nav>
 
       <p class="masthead-meta">
-        <span><b>Минск</b></span>
+        <b data-bind="city">Минск</b>
         <span class="status"><span class="status-dot"></span>Открыт для проектов</span>
       </p>
     </div>
@@ -53,7 +77,14 @@
 </header>
 
 <main>
-  <section class="hero">
+  <section class="hero railed">
+    <!-- Ветка из собственной иллюстрации владельца: отсюда взят мох
+         в палитре. Качается маятником от прокрутки, поэтому первый
+         экран реагирует на присутствие, а не просто лежит. -->
+    <div class="bough-frame" aria-hidden="true">
+      <img class="bough" id="bough" src="assets/branch.webp" alt="" width="1095" height="980" fetchpriority="low">
+    </div>
+
     <div class="shell">
 
       <p class="kicker-name reveal">
@@ -79,24 +110,116 @@
             от концепции и презентации решения до макета в печать или
             передачи разработчику.
           </p>
-          <a class="btn" href="#contact" data-magnetic>Обсудить задачу</a>
+          <a class="cta" href="#contact" data-symbiote data-cursor="link" data-cursor-label="К контактам">
+            <span class="cta-text">Обсудить задачу</span>
+          </a>
         </div>
       </div>
 
+      <p class="fallback">
+        Работы, опыт и инструменты подгружаются скриптом. Если он выключен,
+        напишите на suleyman.sheripov@icloud.com, пришлю всё ссылкой.
+      </p>
+
     </div>
   </section>
 
-  <section class="ledger">
+  <section class="work railed" id="work" data-tone="night" aria-labelledby="workTitle">
     <div class="shell">
       <div class="sec-head reveal">
         <span class="sec-index">01</span>
-        <h2>Где работал</h2>
+        <h2 id="workTitle">Работы</h2>
+        <span class="sec-count" id="workCount"></span>
+        <p class="work-status" id="workStatus">Загружаю работы…</p>
+      </div>
+    </div>
+
+    <div class="rail reveal" id="workRail" data-cursor="drag" data-cursor-label="Тяни">
+      <ol class="rail-track" id="workTrack"></ol>
+    </div>
+  </section>
+
+  <section class="ledger railed" id="experience" aria-labelledby="expTitle">
+    <div class="shell">
+      <div class="sec-head reveal">
+        <span class="sec-index">02</span>
+        <h2 id="expTitle">Где работал</h2>
         <span class="sec-count" id="ledgerCount"></span>
       </div>
-      <ol class="ledger-list" id="track"></ol>
+      <ol class="ledger-list reveal" id="track"></ol>
+    </div>
+  </section>
+
+  <section class="tools railed" id="tools" aria-labelledby="toolsTitle">
+    <div class="shell">
+      <div class="sec-head reveal">
+        <span class="sec-index">03</span>
+        <h2 id="toolsTitle">Чем делаю</h2>
+      </div>
+
+      <div class="kit reveal">
+        <!-- Короб с фишками — способ показать список, а не сам список:
+             содержимое дублируется текстом ниже -->
+        <div class="kit-arena" id="kitArena" aria-hidden="true"></div>
+        <ul class="kit-legend" id="kitLegend"></ul>
+        <button class="kit-again" id="kitAgain" type="button" hidden>Высыпать заново</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact railed" id="contact" aria-labelledby="contactTitle">
+    <div class="shell">
+      <div class="sec-head reveal">
+        <span class="sec-index">04</span>
+        <h2 id="contactTitle">Связаться</h2>
+        <p class="sec-lead">
+          Напишите, что за задача и к какому сроку. Посмотрю и честно скажу,
+          берусь или нет.
+        </p>
+      </div>
+
+      <a class="mailto reveal" href="mailto:suleyman.sheripov@icloud.com"
+         data-bind="email" data-bind-href="mailto:" data-letters
+         data-cursor="link" data-cursor-label="Написать">suleyman.sheripov@icloud.com</a>
+      <div class="mailto-rule"></div>
+
+      <ul class="contact-list reveal">
+        <li>
+          <span class="label">Телефон</span>
+          <a href="tel:+375257569861" data-bind="phone" data-bind-href="tel:">+375 25 756 98 61</a>
+        </li>
+        <li>
+          <span class="label">Behance</span>
+          <a href="https://behance.net/suleymasheripov" data-bind="behance"
+             target="_blank" rel="noopener">behance.net/suleymasheripov</a>
+        </li>
+        <li>
+          <span class="label">Dribbble</span>
+          <a href="https://dribbble.com/kilus" data-bind="dribbble"
+             target="_blank" rel="noopener">dribbble.com/kilus</a>
+        </li>
+        <li>
+          <span class="label">Город</span>
+          <span data-bind="city">Минск</span>
+        </li>
+      </ul>
     </div>
   </section>
 </main>
+
+<footer class="colophon railed">
+  <div class="shell">
+    <p class="colophon-row">
+      <span><b>Сулейман Шерипов</b>, <span data-bind="city">Минск</span></span>
+      <span>Свёрстан вручную, без конструктора</span>
+    </p>
+  </div>
+</footer>
+
+<dialog class="sheet" id="caseSheet" aria-labelledby="caseTitle">
+  <div class="sheet-body" id="caseBody"></div>
+  <button class="sheet-close" id="caseClose" type="button" data-cursor="link">Закрыть</button>
+</dialog>
 
 <script type="module" src="js/main.js"></script>
 </body>

@@ -1,0 +1,345 @@
+/* Админка нарочно тише сайта: это рабочий стол, а не витрина.
+   Токены те же, чтобы правки читались в том же языке, но ни ветки,
+   ни курсора, ни физики здесь нет — они мешали бы набирать текст. */
+
+.admin {
+  background: var(--paper-raised);
+  padding-bottom: 5rem;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--paper);
+  border-bottom: 2px solid var(--ink);
+}
+
+.bar-in {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  max-width: 1060px;
+  margin-inline: auto;
+  padding: 0.85rem var(--pad-page);
+}
+
+.bar-title {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  letter-spacing: -0.03em;
+}
+
+.bar-repo {
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.bar-state {
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  max-width: 34ch;
+}
+
+.bar-state--warn { color: var(--moss-deep); }
+.bar-state--bad { color: #8C2F1E; }
+
+.wrap {
+  max-width: 1060px;
+  margin-inline: auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem) var(--pad-page) 0;
+}
+
+/* ── Кнопки ────────────────────────────────────────────── */
+
+.btn-solid,
+.btn-ghost {
+  padding: 0.75rem 1.05rem;
+  border-radius: var(--radius-s);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+  transition: background var(--dur-tap) var(--ease-out),
+              border-color var(--dur-tap) var(--ease-out),
+              color var(--dur-tap) var(--ease-out);
+}
+
+.btn-solid {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.btn-solid:disabled {
+  background: var(--rule);
+  color: var(--ink-muted);
+  cursor: default;
+}
+
+.btn-ghost {
+  border-color: var(--rule);
+  color: var(--ink-muted);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-ghost--danger { color: #8C2F1E; }
+
+@media (hover: hover) {
+  .btn-solid:hover:not(:disabled) { background: var(--moss-deep); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+}
+
+/* ── Вход ──────────────────────────────────────────────── */
+
+.gate {
+  max-width: 46rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.gate h1 {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.gate-lead {
+  max-width: 54ch;
+  color: var(--ink-muted);
+  font-size: var(--t-sm);
+  margin-bottom: 1.75rem;
+}
+
+.gate-form,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.gate-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--paper-raised);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.err {
+  font-size: var(--t-xs);
+  color: #8C2F1E;
+  max-width: 40ch;
+}
+
+/* ── Поля ──────────────────────────────────────────────── */
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+}
+
+.field--wide { grid-column: 1 / -1; }
+
+.field-label {
+  font-size: var(--t-label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.field input,
+.field textarea,
+.field select {
+  font: inherit;
+  font-size: var(--t-sm);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-s);
+  padding: 0.6rem 0.75rem;
+  width: 100%;
+  transition: border-color var(--dur-tap) var(--ease-out);
+}
+
+.field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus { border-color: var(--moss); }
+
+.field--compact input { padding: 0.4rem 0.55rem; }
+
+.field-hint {
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.field-hint b { color: var(--ink); font-weight: 600; }
+
+/* ── Блоки и строки ────────────────────────────────────── */
+
+.block {
+  margin-top: clamp(2rem, 5vw, 3rem);
+  padding-top: clamp(1.25rem, 3vw, 1.75rem);
+  border-top: 2px solid var(--ink);
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.block h2 {
+  font-size: clamp(1.15rem, 3vw, 1.6rem);
+  text-transform: uppercase;
+  margin: 0 0 1.25rem;
+}
+
+.block-head h2 { margin: 0; }
+
+.rows {
+  display: grid;
+  gap: 1rem;
+}
+
+.row {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  padding: 1.25rem;
+  margin: 0;
+}
+
+.row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0 0.4rem;
+}
+
+.row-idx {
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.row-title {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: var(--t-sm);
+  letter-spacing: -0.02em;
+}
+
+.row-tools {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+}
+
+.row-tools .btn-ghost--danger { margin-left: auto; }
+
+.note {
+  font-size: var(--t-sm);
+  color: var(--ink-muted);
+}
+
+.note--bad { color: #8C2F1E; }
+
+.empty {
+  font-size: var(--t-sm);
+  color: var(--ink-muted);
+  padding: 1.25rem;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+}
+
+/* ── Снимки кейса ──────────────────────────────────────── */
+
+.shots {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: 0.85rem;
+  padding-top: 0.5rem;
+}
+
+.shot {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 0.65rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-s);
+}
+
+.shot img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 8px;
+  background: var(--paper-raised);
+}
+
+.shot-add {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  padding: 0.85rem;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius-s);
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  text-align: center;
+  cursor: pointer;
+}
+
+.shot-add input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.shot-add:focus-within {
+  border-color: var(--moss);
+  color: var(--ink);
+}

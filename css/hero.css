@@ -229,7 +229,7 @@
 
 .services li {
   display: grid;
-  grid-template-columns: 3.25rem minmax(0, 1fr);
+  grid-template-columns: var(--rail) minmax(0, 1fr);
   align-items: baseline;
   gap: 1rem;
   padding-block: clamp(0.65rem, 1.6vw, 0.95rem);
@@ -270,23 +270,79 @@
   font-weight: 500;
 }
 
-/* Единственная пилюля на странице — главное действие.
-   Радиус здесь работает иерархией, а не украшением. */
-.btn {
+/* ── Кнопка-симбиот ────────────────────────────────────────
+   Единственная пилюля на сайте: радиус работает иерархией,
+   а не украшением.
+
+   Пилюля нарисована дважды. Первая — фон самой ссылки, она есть
+   всегда, даже если скрипты не пришли. Вторая лежит в слое под
+   фильтром goo вместе с каплей, и только там они сливаются
+   в одну тягучую массу. Подпись вынесена из фильтра: попади она
+   внутрь, размылась бы вместе с фоном. */
+
+.cta {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--gap-xs);
-  padding: 1rem 1.9rem;
-  border-radius: 999px;
+  justify-content: center;
+  padding: 1.05rem 2.1rem;
   border: none;
+  border-radius: 999px;
   background: var(--ink);
   color: var(--paper);
   font-size: var(--t-sm);
   font-weight: 600;
+  letter-spacing: 0.01em;
   text-decoration: none;
-  transition: transform var(--dur-tap) var(--ease-out);
+  isolation: isolate;
   will-change: transform;
 }
+
+.cta:active { scale: 0.97; }
+
+/* Слой шире кнопки на 110 px во все стороны: капле нужно куда
+   вылезать, а фильтр обрезается по границам своего слоя */
+.cta-goo {
+  position: absolute;
+  inset: -110px;
+  z-index: -1;
+  filter: url(#goo);
+  pointer-events: none;
+}
+
+.cta-body {
+  position: absolute;
+  inset: 110px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+.cta-drop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: scale(0);
+  will-change: transform;
+}
+
+.cta-text {
+  position: relative;
+  will-change: transform;
+}
+
+/* На тёмной зоне кнопка выворачивается: чернила по ночи не видны */
+[data-tone="night"] .cta,
+[data-tone="night"] .cta-body,
+[data-tone="night"] .cta-drop {
+  background: var(--night-ink);
+}
+
+[data-tone="night"] .cta { color: var(--night); }
 
 /* ── Реестр работ ──────────────────────────────────────────
    Не карточки, а указатель: номер, клиент, роль, срок.
@@ -298,35 +354,6 @@
   border-top: 2px solid var(--ink);
 }
 
-.sec-head {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
-}
-
-.sec-index {
-  font-size: var(--t-xs);
-  font-variant-numeric: tabular-nums;
-  color: var(--moss-deep);
-  letter-spacing: 0.06em;
-}
-
-.sec-head h2 {
-  font-size: clamp(1.6rem, 4vw, 2.6rem);
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.sec-count {
-  margin-left: auto;
-  font-size: var(--t-xs);
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-}
-
 .ledger-list {
   list-style: none;
   margin: 0;
@@ -335,7 +362,7 @@
 
 .entry {
   display: grid;
-  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  grid-template-columns: var(--rail) minmax(0, 1fr) auto;
   gap: 0.35rem 1rem;
   align-items: baseline;
   padding-block: clamp(1rem, 2.4vw, 1.6rem);
@@ -397,7 +424,7 @@
 }
 
 @media (max-width: 640px) {
-  .entry { grid-template-columns: 2.5rem minmax(0, 1fr); }
+  .entry { grid-template-columns: var(--rail) minmax(0, 1fr); }
   .entry-period { grid-column: 2; }
 }
 
@@ -432,4 +459,78 @@
     flex-basis: 100%;
     margin-left: 0;
   }
+}
+
+/* ── Ветка ─────────────────────────────────────────────────
+   Собственная иллюстрация владельца, из неё взят мох в палитре.
+   Висит в пустом верхнем правом углу первого экрана и качается
+   маятником: физику считает bough.js.
+
+   Текст под неё не заходит — иначе тёмная зелень съела бы
+   контраст набора. */
+
+.hero .shell {
+  position: relative;
+  z-index: 1;
+}
+
+/* Рамка обрезает ветку по первому экрану. Резать сам .hero нельзя:
+   тогда обрежется и слой goo под кнопкой, который вылезает за неё
+   на сотню пикселей. */
+.bough-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bough {
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  width: clamp(200px, 26vw, 400px);
+  height: auto;
+  transform-origin: 86% 4%;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* На узком экране в правом верхнем углу стоит текст: ветка ушла бы
+   под набор и убила бы контраст */
+@media (max-width: 900px) {
+  .bough-frame { display: none; }
+}
+
+/* ── Навигация в шапке ─────────────────────────────────────
+   Три раздела, которые на странице действительно есть. */
+
+.masthead-nav {
+  display: flex;
+  gap: clamp(1.4rem, 3.5vw, 1.75rem);
+  font-size: var(--t-xs);
+  padding-bottom: 0.35rem;
+}
+
+/* Отрицательный margin гасит padding в раскладке: на вид ссылка
+   стоит там же, а пальцем в неё попасть можно (44 px по высоте) */
+.masthead-nav a {
+  padding: 0.8rem 0.35rem;
+  margin: -0.8rem -0.35rem;
+  text-decoration: none;
+  color: var(--ink-muted);
+  transition: color var(--dur-tap) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .masthead-nav a:hover { color: var(--ink); }
+}
+
+/* Видно только когда скрипты выключены: см. noscript в index.html */
+.fallback {
+  display: none;
+  margin-top: clamp(1.5rem, 4vw, 2.5rem);
+  max-width: 52ch;
+  font-size: var(--t-sm);
+  color: var(--ink-muted);
 }

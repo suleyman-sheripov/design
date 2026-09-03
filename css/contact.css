@@ -1,0 +1,110 @@
+/* ── Связаться ─────────────────────────────────────────────
+   Фокус раздела — сам адрес, набранный крупно. Не кнопка со
+   словом «связаться», за которой прячется почта, а почта.
+
+   Буквы адреса тянутся к руке той же пружиной, что и капля
+   на главной кнопке. Один жест на весь сайт: материал реагирует
+   на руку, а не мигает подсветкой. */
+
+.contact {
+  padding-block: clamp(3rem, 8vw, 6rem) clamp(2rem, 5vw, 3.5rem);
+  border-top: 2px solid var(--ink);
+}
+
+.mailto {
+  display: block;
+  margin-left: var(--rail);
+  padding-block: 0.4rem clamp(1.25rem, 3vw, 2rem);
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(1.15rem, 5vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+/* Буква — отдельное тело со своей пружиной. Пробелов в адресе нет,
+   поэтому разрывать строку можно где угодно. */
+.mailto .ch {
+  display: inline-block;
+  will-change: transform;
+}
+
+.mailto-rule {
+  height: 2px;
+  margin-left: var(--rail);
+  background: var(--ink);
+  transform-origin: left center;
+  transform: scaleX(1);
+  transition: background var(--dur-tap) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .mailto:hover + .mailto-rule { background: var(--moss); }
+}
+
+.contact-list {
+  list-style: none;
+  margin: clamp(1.5rem, 4vw, 2.5rem) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.contact-list li {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem 1.25rem 1rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.contact-list a,
+.contact-list span:not(.label) {
+  font-size: var(--t-body);
+  text-decoration: none;
+}
+
+.contact-list a {
+  padding-block: 0.6rem;
+  margin-block: -0.6rem;
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 0.25em;
+  transition: text-decoration-color var(--dur-tap) var(--ease-out);
+  justify-self: start;
+}
+
+@media (hover: hover) {
+  .contact-list a:hover { text-decoration-color: var(--moss); }
+}
+
+/* ── Колофон ───────────────────────────────────────────────
+   Одна строка вместо четырёх колонок ссылок: их тут просто
+   некуда набрать, а пустые колонки честнее не рисовать. */
+
+.colophon {
+  padding-block: clamp(1.5rem, 3vw, 2.25rem);
+  border-top: 1px solid var(--rule);
+}
+
+.colophon-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+}
+
+.colophon-row b {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .mailto,
+  .mailto-rule { margin-left: 0; }
+}

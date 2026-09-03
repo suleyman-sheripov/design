@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Админка. Содержимое сайта</title>
+
+<link rel="icon" href="../assets/logo/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600&family=Golos+Text:wght@400;500;600&display=swap">
+
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+
+<header class="bar">
+  <div class="bar-in">
+    <span class="bar-title">Содержимое сайта</span>
+    <span class="bar-repo" id="barRepo" hidden></span>
+    <div class="bar-actions" id="barActions" hidden>
+      <span class="bar-state" id="saveState" role="status" aria-live="polite"></span>
+      <button class="btn-ghost" id="reload" type="button">Перечитать</button>
+      <button class="btn-solid" id="save" type="button">Сохранить</button>
+      <button class="btn-ghost" id="signOut" type="button">Выйти</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ── Вход ────────────────────────────────────────────── -->
+  <section class="gate" id="gate">
+    <h1>Вход</h1>
+    <p class="gate-lead">
+      Админка правит файлы <code>data/profile.json</code> и
+      <code>data/projects.json</code> прямо в репозитории через GitHub API.
+      Своего сервера у сайта нет, поэтому нужен твой токен.
+    </p>
+
+    <form id="gateForm" class="gate-form">
+      <label class="field">
+        <span class="field-label">Владелец</span>
+        <input id="owner" name="owner" required autocomplete="off" spellcheck="false">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Репозиторий</span>
+        <input id="repo" name="repo" required autocomplete="off" spellcheck="false">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Ветка</span>
+        <input id="branch" name="branch" required autocomplete="off" spellcheck="false">
+      </label>
+
+      <label class="field field--wide">
+        <span class="field-label">Токен GitHub</span>
+        <input id="token" name="token" type="password" required autocomplete="current-password" spellcheck="false">
+        <span class="field-hint">
+          Fine-grained token только на этот репозиторий, право
+          <b>Contents: Read and write</b>. Токен остаётся в этом браузере
+          (localStorage) и никуда больше не уходит: запросы идут напрямую
+          на api.github.com. На чужом компьютере после работы жми «Выйти».
+        </span>
+      </label>
+
+      <div class="gate-foot">
+        <button class="btn-solid" type="submit">Войти</button>
+        <span class="err" id="gateError" role="alert"></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ── Редактор ────────────────────────────────────────── -->
+  <div id="editor" hidden>
+
+    <p class="note" id="loadState" role="status" aria-live="polite"></p>
+
+    <section class="block">
+      <h2>Контакты и подпись</h2>
+      <div class="grid" id="profileFields"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Где работал</h2>
+        <button class="btn-ghost" type="button" data-add="track">Добавить место</button>
+      </div>
+      <div class="rows" id="trackRows"></div>
+      <p class="empty" id="trackEmpty" hidden>Ни одного места. Добавь первое, иначе раздел на сайте не покажется.</p>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Инструменты</h2>
+        <button class="btn-ghost" type="button" data-add="tools">Добавить инструмент</button>
+      </div>
+      <div class="rows" id="toolsRows"></div>
+      <p class="empty" id="toolsEmpty" hidden>Ни одного инструмента. Раздел «Чем делаю» без них не покажется.</p>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Кейсы</h2>
+        <button class="btn-ghost" type="button" data-add="projects">Добавить кейс</button>
+      </div>
+      <div class="rows" id="projectRows"></div>
+      <p class="empty" id="projectsEmpty" hidden>Ни одного кейса. На сайте вместо ленты будет строка «работы ещё не выложены».</p>
+    </section>
+
+  </div>
+</main>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>

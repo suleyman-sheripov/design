@@ -1,0 +1,128 @@
+{
+  "projects": [
+    {
+      "slug": "beautylab",
+      "title": "Beauty Lab",
+      "kind": "Сайт салона красоты",
+      "role": "UI/UX",
+      "year": "2025",
+      "note": "Путь до записи сокращён до двух кликов: услуга выбирается прямо из каталога, а не через отдельную форму.",
+      "cover": "beautylab-1-main",
+      "ratio": "wide",
+      "shots": [
+        {
+          "file": "beautylab-1-main",
+          "alt": "Главная страница Beauty Lab"
+        },
+        {
+          "file": "beautylab-2-catalog",
+          "alt": "Каталог услуг Beauty Lab"
+        },
+        {
+          "file": "beautylab-3-service",
+          "alt": "Страница отдельной услуги Beauty Lab"
+        },
+        {
+          "file": "beautylab-4-contacts",
+          "alt": "Страница контактов Beauty Lab"
+        }
+      ]
+    },
+    {
+      "slug": "vasil",
+      "title": "Василь Шарангович",
+      "kind": "Сайт о художнике",
+      "role": "UI/UX",
+      "year": "",
+      "note": "",
+      "cover": "vasil-2-home",
+      "ratio": "wide",
+      "shots": [
+        {
+          "file": "vasil-1-intro",
+          "alt": "Первый экран сайта о Василе Шаранговиче"
+        },
+        {
+          "file": "vasil-2-home",
+          "alt": "Главная страница сайта о Василе Шаранговиче"
+        },
+        {
+          "file": "vasil-3-card",
+          "alt": "Страница отдельной картины"
+        },
+        {
+          "file": "vasil-4-works",
+          "alt": "Список работ художника"
+        }
+      ]
+    },
+    {
+      "slug": "multivarka",
+      "title": "Мультиварка",
+      "kind": "Мобильный интерфейс прибора",
+      "role": "UI",
+      "year": "",
+      "note": "",
+      "cover": "multivarka-3-process",
+      "ratio": "tall",
+      "shots": [
+        {
+          "file": "multivarka-1-intro",
+          "alt": "Стартовый экран мультиварки"
+        },
+        {
+          "file": "multivarka-2-setup",
+          "alt": "Экран настройки готовки"
+        },
+        {
+          "file": "multivarka-3-process",
+          "alt": "Экран процесса готовки"
+        },
+        {
+          "file": "multivarka-4-settings",
+          "alt": "Экран настроек прибора"
+        }
+      ]
+    },
+    {
+      "slug": "yotoys",
+      "title": "YoToys",
+      "kind": "Экран регистрации",
+      "role": "UI/UX",
+      "year": "",
+      "note": "",
+      "cover": "yotoys-1-mockup",
+      "ratio": "wide",
+      "shots": [
+        {
+          "file": "yotoys-1-mockup",
+          "alt": "Мокап экрана регистрации YoToys"
+        },
+        {
+          "file": "yotoys-2-screen",
+          "alt": "Экран регистрации YoToys"
+        }
+      ]
+    },
+    {
+      "slug": "checkout",
+      "title": "Оплата картой",
+      "kind": "Экран оплаты",
+      "role": "UI",
+      "year": "",
+      "note": "",
+      "cover": "checkout-2-screen",
+      "ratio": "tall",
+      "shots": [
+        {
+          "file": "checkout-2-screen",
+          "alt": "Экран ввода данных карты"
+        },
+        {
+          "file": "checkout-1-mockup",
+          "alt": "Мокап экрана оплаты на телефоне"
+        }
+      ]
+    }
+  ]
+}

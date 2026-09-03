@@ -1,0 +1,226 @@
+/* ── Работы ────────────────────────────────────────────────
+   Единственная тёмная зона на сайте. Она отделяет «что я делаю»
+   от «что уже сделано», и работы на ней читаются как слайды
+   на просвет, а не как картинки в документе.
+
+   Лента выходит за правый край страницы намеренно: обрезанная
+   карточка говорит «дальше есть ещё» лучше любой стрелки. */
+
+.work {
+  padding-block: clamp(3rem, 8vw, 6rem);
+  overflow: hidden;
+}
+
+.work-status {
+  grid-column: 2 / -1;
+  max-width: 46ch;
+  font-size: var(--t-sm);
+  color: var(--ink-muted);
+}
+
+/* Лента начинается там же, где заголовок раздела: не под номером,
+   а в колонке контента. Иначе кейсы «висят» отдельно от страницы. */
+.rail {
+  padding-left: calc(max(var(--pad-page), calc(50% - var(--shell) / 2 + var(--pad-page))) + var(--rail));
+  padding-right: var(--pad-page);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+  scroll-padding-left: 2rem;
+  overscroll-behavior-x: contain;
+}
+
+.rail.is-dragging { cursor: grabbing; }
+
+.rail-track {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  list-style: none;
+  margin: 0;
+  padding: 0 0 1.5rem;
+  width: max-content;
+}
+
+/* Карточка заваливается по ходу броска. Множитель у соседей
+   разный, поэтому лента ведёт себя как стопка отдельных листов,
+   а не как один приклеенный ряд. */
+.case {
+  --k: 1;
+  flex: none;
+  transform: rotate(calc(var(--lean, 0) * var(--k) * -0.05deg))
+             skewX(calc(var(--lean, 0) * var(--k) * 0.035deg));
+  transform-origin: 50% 120%;
+  will-change: transform;
+}
+
+.case:nth-child(even) { --k: 1.5; }
+
+/* Высота у всех карточек одна, ширину задаёт пропорция снимка:
+   лента получается ровной полосой, а не гребёнкой, при этом
+   телефон и десктоп по-прежнему разной ширины */
+.case { width: auto; }
+
+.case-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  color: inherit;
+}
+
+.case-shot {
+  display: block;
+  height: clamp(200px, 26vw, 340px);
+  width: auto;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--night-raised);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.case--wide .case-shot { aspect-ratio: 16 / 10; }
+.case--tall .case-shot { aspect-ratio: 9 / 16; }
+
+.case-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  transition: transform 520ms var(--ease-out);
+}
+
+@media (hover: hover) {
+  .case-open:hover .case-shot img,
+  .case-open:focus-visible .case-shot img { transform: scale(1.035); }
+}
+
+.case-meta {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.15rem 0.75rem;
+  padding-top: 0.9rem;
+}
+
+.case-idx {
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+}
+
+.case-title {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.case-kind {
+  grid-column: 2;
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+}
+
+/* ── Разбор кейса ──────────────────────────────────────────
+   Нативный <dialog>: Escape, ловушка фокуса и возврат фокуса
+   на кнопку уже написаны в браузере. */
+
+.sheet {
+  position: relative;
+  width: min(980px, 94vw);
+  max-width: none;
+  max-height: 90dvh;
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: visible;
+  color: var(--ink);
+}
+
+/* Единственное размытие на сайте: страница под разбором должна
+   уйти из фокуса, но остаться узнаваемой */
+.sheet::backdrop {
+  background: rgba(20, 18, 12, 0.66);
+  backdrop-filter: blur(4px);
+}
+
+.sheet-body {
+  max-height: 90dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+  border-radius: var(--radius);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  will-change: transform;
+}
+
+.sheet-head {
+  display: grid;
+  gap: 0.4rem;
+  padding-bottom: clamp(1.25rem, 3vw, 2rem);
+  margin-bottom: clamp(1.25rem, 3vw, 2rem);
+  border-bottom: 2px solid var(--ink);
+}
+
+.sheet-head h3 {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(1.7rem, 5vw, 3rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.sheet-kind {
+  font-size: var(--t-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--moss-deep);
+}
+
+.sheet-note {
+  max-width: 52ch;
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  margin-top: 0.5rem;
+}
+
+.sheet-shot {
+  margin: 0 0 clamp(0.75rem, 2vw, 1.25rem);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  background: var(--paper-raised);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.sheet-shot img { width: 100%; }
+
+.sheet-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .rail { padding-left: var(--pad-page); }
+}
