@@ -2,51 +2,83 @@ import { initIntro } from './intro.js';
 
 const intro = initIntro(document);
 
+renderLedger().then(() => intro.done).then(revealAll);
+
 /* Опыт лежит в data/profile.json, а не в разметке: админка будет
    править этот файл через GitHub API, не трогая вёрстку. */
-renderTrack();
-
-async function renderTrack() {
+async function renderLedger() {
   const list = document.getElementById('track');
   if (!list) return;
 
   try {
     const res = await fetch('data/profile.json');
-    if (!res.ok) throw new Error(res.status);
+    if (!res.ok) throw new Error(String(res.status));
     const { track = [] } = await res.json();
 
-    list.replaceChildren(...track.map(item => {
+    list.replaceChildren(...track.map((item, i) => {
       const li = document.createElement('li');
-      li.className = 'track-item';
-      li.tabIndex = 0;
-      li.innerHTML = `
-        <span class="track-role">
-          <span class="track-client"></span>
-          <span class="track-kind"></span>
-        </span>
-        <span class="track-period"></span>
-        <span class="track-note"></span>`;
-      li.querySelector('.track-client').textContent = item.client;
-      li.querySelector('.track-kind').textContent = `${item.role} · ${item.kind}`;
-      li.querySelector('.track-period').textContent = item.period;
-      li.querySelector('.track-note').textContent = item.note;
+      /* Учебная работа весит меньше коммерческой — это видно кеглем */
+      li.className = item.kind === 'Учебный проект' ? 'entry entry--minor' : 'entry';
+      li.append(
+        span('entry-idx', String(i + 1).padStart(2, '0')),
+        clientCell(item),
+        span('entry-period', item.period),
+        span('entry-note', item.note),
+      );
       return li;
     }));
+
+    const count = document.getElementById('ledgerCount');
+    if (count) count.textContent = `${track.length} ${plural(track.length)}`;
   } catch {
-    /* Файл не отдался — блок просто остаётся пустым, экран не ломается */
-    list.closest('.hero-rail')?.remove();
+    /* Файл не отдался — секция снимается целиком, экран не ломается */
+    list.closest('.ledger')?.remove();
   }
 }
 
-/* Содержимое первого экрана появляется после сборки замка,
-   волной по 60 мс — так секция оживает, а не моргает целиком. */
-intro.done.then(() => {
-  document.querySelectorAll('.reveal').forEach((el, i) => {
-    setTimeout(() => el.classList.add('is-in'), i * 60);
-  });
-});
+function clientCell({ client, role, kind }) {
+  const wrap = document.createElement('span');
+  wrap.className = 'entry-client';
+  wrap.append(span('entry-role', `${role} · ${kind}`), document.createTextNode(client));
+  return wrap;
+}
 
-/* Магнитные кнопки. Только там, где есть настоящий курсор:
+function span(className, text) {
+  const el = document.createElement('span');
+  el.className = className;
+  el.textContent = text;
+  return el;
+}
+
+function plural(n) {
+  const tail = n % 10;
+  if (n > 4 && n < 21) return 'мест';
+  if (tail === 1) return 'место';
+  if (tail > 1 && tail < 5) return 'места';
+  return 'мест';
+}
+
+/* Появление волной по 60 мс — один приём на весь сайт.
+   Первый экран открывается сразу после интро, остальное по прокрутке. */
+function revealAll() {
+  const items = [...document.querySelectorAll('.reveal')];
+  const above = items.filter(el => el.getBoundingClientRect().top < innerHeight);
+  above.forEach((el, i) => setTimeout(() => el.classList.add('is-in'), i * 60));
+
+  const rest = items.filter(el => !above.includes(el));
+  if (!rest.length) return;
+
+  const io = new IntersectionObserver((entries, self) => {
+    entries.filter(e => e.isIntersecting).forEach((e, i) => {
+      setTimeout(() => e.target.classList.add('is-in'), i * 60);
+      self.unobserve(e.target);
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+
+  rest.forEach(el => io.observe(el));
+}
+
+/* Магнитная кнопка. Только там, где есть настоящий курсор:
    на тач-экране наведения не существует. */
 const canHover = matchMedia('(hover: hover) and (pointer: fine)').matches;
 const wantsMotion = !matchMedia('(prefers-reduced-motion: reduce)').matches;

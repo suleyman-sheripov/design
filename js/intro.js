@@ -7,8 +7,8 @@
    высота знака = высоте прописных, низ знака = базовой линии текста.
    Поэтому Ш никогда не окажется выше или ниже ERIPOV. */
 
-const SCENE_H = 200;    // совпадает с .intro-scene в hero.css
-const TEXT_TOP = 81;    // .intro-rest / .intro-glyph top в hero.css
+const SCENE_H = 150;    // совпадает с .intro-scene в hero.css
+const TEXT_TOP = 50;    // .intro-rest / .intro-glyph top в hero.css
 const MARK_RATIO = 483 / 300;
 
 /* Отступы внутри замка — доли высоты прописных, а не пиксели:
@@ -17,8 +17,10 @@ const GAP_MARK_DOT = 0.20;
 const GAP_DOT_TEXT = 0.16;
 const REST_SLIDE = 26;  // на сколько ERIPOV выезжает из-за знака
 
-const BALL_SIZE = 46;
-const DOT_SIZE = 18;
+/* Шарик и точка тоже доли высоты прописных: точка чуть крупнее
+   штриха знака, иначе теряется рядом с его массой */
+const BALL_RATIO = 0.78;
+const DOT_RATIO = 0.30;
 const BALL_START = 780;
 
 const SESSION_KEY = 'intro-seen';
@@ -43,7 +45,7 @@ export function initIntro(root) {
   const seen = sessionRead(SESSION_KEY);
 
   /* Считается в layout(), используется в play() */
-  const g = { lockupW: 450, ballTop: 87, ballStop: 60, ballBack: 82, dotX: 112, restX: 152, hX: 130, hEnd: 58 };
+  const g = { ballSize: 33, dotSize: 13, lockupW: 450, ballTop: 87, ballStop: 60, ballBack: 82, dotX: 112, restX: 152, hX: 130, hEnd: 58 };
 
   layout();
   fit();
@@ -75,17 +77,22 @@ export function initIntro(root) {
     markSvg.style.width = `${markW.toFixed(1)}px`;
     markSvg.style.height = `${capH.toFixed(1)}px`;
 
+    g.ballSize = capH * BALL_RATIO;
+    g.dotSize = capH * DOT_RATIO;
+    size2(ball, g.ballSize);
+    size2(dot, g.dotSize);
+
     /* Низ знака и низ точки садятся на базовую линию текста */
     place(mark, 0, baseline - capH);
     g.dotX = markW + capH * GAP_MARK_DOT;
-    place(dot, g.dotX, baseline - DOT_SIZE);
+    place(dot, g.dotX, baseline - g.dotSize);
 
-    g.restX = g.dotX + DOT_SIZE + capH * GAP_DOT_TEXT;
+    g.restX = g.dotX + g.dotSize + capH * GAP_DOT_TEXT;
     place(rest, g.restX - REST_SLIDE);
     g.lockupW = g.restX + rest.offsetWidth;
 
     /* Шарик едет по середине прописных */
-    g.ballTop = baseline - capH / 2 - BALL_SIZE / 2;
+    g.ballTop = baseline - capH / 2 - g.ballSize / 2;
     place(ball, BALL_START, g.ballTop);
 
     /* S падает на место знака, H — позади шарика */
@@ -108,6 +115,11 @@ export function initIntro(root) {
     scene.parentElement.style.height = `${Math.round(SCENE_H * s)}px`;
   }
 
+  function size2(el, px) {
+    el.style.width = px.toFixed(1) + 'px';
+    el.style.height = px.toFixed(1) + 'px';
+  }
+
   function place(el, x, y) {
     el.style.left = `${x}px`;
     if (y != null) el.style.top = `${y}px`;
@@ -127,12 +139,12 @@ export function initIntro(root) {
 
   function play() {
     const roll = g.ballStop - BALL_START;
-    const turns = (roll / (Math.PI * BALL_SIZE)) * 360;   // качение, а не скольжение
+    const turns = (roll / (Math.PI * g.ballSize)) * 360;   // качение, а не скольжение
 
-    const ballCx = BALL_START + BALL_SIZE / 2;
-    const ballCy = g.ballTop + BALL_SIZE / 2;
-    const dotCx = g.dotX + DOT_SIZE / 2;
-    const dotCy = parseFloat(dot.style.top) + DOT_SIZE / 2;
+    const ballCx = BALL_START + g.ballSize / 2;
+    const ballCy = g.ballTop + g.ballSize / 2;
+    const dotCx = g.dotX + g.dotSize / 2;
+    const dotCy = parseFloat(dot.style.top) + g.dotSize / 2;
 
     const anims = [];
     const run = (el, frames, opts) => {
@@ -184,7 +196,7 @@ export function initIntro(root) {
       { transform: `translateX(${g.ballBack - BALL_START}px) translateY(0) scale(1)`, offset: 0 },
       { transform: `translateX(${g.ballBack - BALL_START - 14}px) translateY(-6px) scale(.74,1.22)`, offset: 0.16 },
       { transform: `translateX(${dotCx - ballCx}px) translateY(-98px) scale(.62)`, offset: 0.6 },
-      { transform: `translateX(${dotCx - ballCx}px) translateY(${(dotCy - ballCy).toFixed(1)}px) scale(${(DOT_SIZE / BALL_SIZE).toFixed(3)})`, offset: 1 }
+      { transform: `translateX(${dotCx - ballCx}px) translateY(${(dotCy - ballCy).toFixed(1)}px) scale(${(g.dotSize / g.ballSize).toFixed(3)})`, offset: 1 }
     ], { duration: 430, delay: 1340, easing: EASE_OUT });
 
     run(ball, [{ opacity: 1 }, { opacity: 0 }], { duration: 1, delay: 1768 });
