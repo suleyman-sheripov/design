@@ -49,6 +49,9 @@ export function initSymbiote(root = document) {
       size: new Spring(0, { stiffness: 200, damping: 24 }),
       lean: new Spring2(0, 0, { stiffness: 190, damping: 20 }),
       press: 1,
+      mode: 'idle',
+      wait: 2 + Math.random() * 3,
+      sway: 0,
     };
 
     el.addEventListener('pointerdown', () => { unit.press = 0.94; });
@@ -72,6 +75,13 @@ export function initSymbiote(root = document) {
     const near = Math.max(0, 1 - d / REACH);
 
     if (near > 0) {
+      /* Рука рядом — что бы капля ни делала, она бросает это
+         и тянется навстречу. Голова прячется мгновенно, потому
+         что пружина доворачивает к новой цели, а не доигрывает
+         старую: ради этого движение и считается пружинами. */
+      u.mode = 'reach';
+      u.wait = idleWait();
+
       /* Длина щупальца гаснет и от близости, и от дальности:
          вплотную капля сидит в теле, далеко — связь уже порвана.
          Максимум вылета приходится на середину пути. */
@@ -81,10 +91,13 @@ export function initSymbiote(root = document) {
       u.pos.set(ux * pull, uy * pull);
       u.size.target = near;
       u.lean.set(ux * near * 7, uy * near * 7);
-    } else {
+    } else if (u.focused) {
+      u.mode = 'idle';
       u.pos.set(0, 0);
-      u.size.target = u.focused ? 0.55 : 0;
+      u.size.target = 0.55;
       u.lean.set(0, 0);
+    } else {
+      idleLife(u, dt, r);
     }
 
     u.pos.step(dt);
@@ -103,6 +116,61 @@ export function initSymbiote(root = document) {
     u.text.style.transform =
       `translate3d(${(u.lean.x.value / 3).toFixed(2)}px, ${(u.lean.y.value / 3).toFixed(2)}px, 0)`;
   }
+
+  /* ── Жизнь в покое ───────────────────────────────────────
+     Пока руки нет, из верхнего края кнопки время от времени
+     поднимается голова, ведёт из стороны в сторону и уходит
+     обратно. Смысл в том, что кнопка ждёт, а не выключена. */
+
+  function idleLife(u, dt, r) {
+    u.wait -= dt;
+
+    if (u.mode === 'reach') {
+      /* Рука ушла — сначала полностью втянуться, и только потом
+         снова считать паузу до следующего показа */
+      u.mode = 'idle';
+      u.wait = idleWait();
+    }
+
+    switch (u.mode) {
+      case 'peek':
+        u.size.target = 0.62;
+        u.pos.set(0, -(r.height / 2 + 16));
+        if (u.wait <= 0) { u.mode = 'look'; u.wait = 2.4; u.sway = 0; }
+        break;
+
+      case 'look': {
+        /* Две волны разной частоты: голова ведёт неровно и не
+           попадает в такт сама с собой */
+        u.sway += dt;
+        const x = Math.sin(u.sway * 1.5) * 26 + Math.sin(u.sway * 0.7) * 9;
+        u.size.target = 0.62;
+        u.pos.set(x, -(r.height / 2 + 16) + Math.abs(Math.sin(u.sway * 1.5)) * 5);
+        u.lean.set(x * 0.12, -2);
+        if (u.wait <= 0) { u.mode = 'retract'; u.wait = 1.1; }
+        break;
+      }
+
+      case 'retract':
+        u.size.target = 0;
+        u.pos.set(0, 0);
+        u.lean.set(0, 0);
+        if (u.wait <= 0) { u.mode = 'idle'; u.wait = idleWait(); }
+        break;
+
+      default:
+        u.size.target = 0;
+        u.pos.set(0, 0);
+        u.lean.set(0, 0);
+        if (u.wait <= 0) { u.mode = 'peek'; u.wait = 0.9; }
+    }
+  }
+}
+
+/* Пауза между показами — вразнобой, чтобы кнопка не тикала
+   как метроном */
+function idleWait() {
+  return 6 + Math.random() * 3.5;
 }
 
 /* Фильтр живёт в одном скрытом SVG на документ: несколько копий

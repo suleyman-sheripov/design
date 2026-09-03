@@ -43,9 +43,9 @@ html.has-cursor textarea {
 
 /* Точка идёт за рукой кадр в кадр — по ней и целятся */
 .cursor-dot {
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
   border-radius: 50%;
   background: currentColor;
   transition: opacity 160ms linear, transform 160ms var(--ease-out);
@@ -65,7 +65,7 @@ html.has-cursor textarea {
 
 .cursor-ring {
   transition: r 220ms var(--ease-out), stroke-width 220ms var(--ease-out);
-  r: 7;
+  r: 11;
 }
 
 /* Засечки метки — только над тем, что можно нажать.
@@ -78,16 +78,13 @@ html.has-cursor textarea {
 }
 
 .cursor[data-state] .cursor-ticks { opacity: 1; transform: none; }
-.cursor[data-state] .cursor-ring { r: 9; stroke-width: 1; }
+.cursor[data-state] .cursor-ring { r: 15; stroke-width: 1; }
 
-/* Над кнопкой точка прячется: центр отдан кресту */
-.cursor[data-state="link"] .cursor-dot,
-.cursor[data-state="view"] .cursor-dot { opacity: 0; }
 
-.cursor[data-state="drag"] .cursor-ring { r: 12; stroke-dasharray: 3 5; }
+.cursor[data-state="drag"] .cursor-ring { r: 18; stroke-dasharray: 3 5; }
 
 .cursor.is-press .cursor-dot { transform-origin: center; opacity: 1; }
-.cursor.is-press .cursor-ring { r: 5; stroke-width: 2; }
+.cursor.is-press .cursor-ring { r: 8; stroke-width: 2; }
 
 .cursor-label {
   display: flex;

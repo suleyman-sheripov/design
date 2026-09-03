@@ -177,6 +177,7 @@
 }
 
 .tile--notch .tile-label {
+  position: relative;
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -190,19 +191,38 @@
   white-space: nowrap;
 }
 
-/* Заливка добирает остаток ряда. Низ-лево скруглён мягче —
-   это вогнутый стык, он не должен спорить с внешним радиусом */
+/* Вогнутый стык. Уступ под прямым углом читался как сбой отрисовки,
+   поэтому внутренний угол скругляется навстречу плитке: квадрат
+   цвета плитки, из которого радиальным градиентом вырезана четверть
+   круга. Сидит на самом ярлыке — привязка к его правому краю, а не
+   к числу, поэтому съехать не может. */
+.tile--notch .tile-label::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--fillet, 15px);
+  height: var(--fillet, 15px);
+  background: radial-gradient(
+    circle at 0 0,
+    transparent var(--fillet, 15px),
+    var(--tile-bg) var(--fillet, 15px)
+  );
+  pointer-events: none;
+}
+
+/* Заливка добирает остаток ряда */
 .notch-fill {
   flex: 1;
   min-width: var(--radius);
   background: var(--tile-bg);
   border-top-right-radius: var(--radius);
-  border-bottom-left-radius: 16px;
 }
 
 /* Верх-право у тела квадратный: там заливка продолжается сверху */
 .tile--notch .tile-body {
   flex: 1;
+  justify-content: flex-start;
   background: var(--tile-bg);
   border-radius: var(--radius) 0 var(--radius) var(--radius);
   padding: var(--pad-y) var(--pad-x) var(--pad-x);
@@ -258,6 +278,7 @@
 /* ── Визитка ───────────────────────────────────────────── */
 
 .card-top {
+  margin-bottom: auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -295,7 +316,7 @@
 
 /* Круглая печать: медленно доворачивается от прокрутки */
 .stamp { width: clamp(58px, 7vw, 84px); height: auto; flex: none; color: var(--moss-on); }
-.stamp text { font-size: 8.6px; letter-spacing: 0.15em; font-weight: 600; fill: currentColor; opacity: 0.8; }
+.stamp text { font-size: 7.8px; letter-spacing: 0.08em; font-weight: 600; fill: currentColor; opacity: 0.75; }
 .stamp-ring { transform-origin: 50% 50%; }
 
 /* ── Высказывание ──────────────────────────────────────── */
@@ -673,4 +694,52 @@
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; }
   .ticker { overflow-x: auto; }
+}
+
+/* ── Кнопка-симбиот ────────────────────────────────────────
+   Тело кнопки и капля — две отдельные фигуры внутри одного
+   слоя с фильтром goo: размытие плюс резкий порог по альфе
+   сплавляет их в одну тягучую массу. Подпись лежит выше слоя
+   и в фильтр не попадает, иначе размылась бы вместе с фоном. */
+
+.cta {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+}
+
+.cta-goo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  filter: url(#goo);
+  pointer-events: none;
+}
+
+.cta-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+/* Капля живёт в центре кнопки и выезжает трансформацией:
+   двигать left/top значит пересчитывать раскладку в каждом кадре */
+.cta-drop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: scale(0);
+  will-change: transform;
+}
+
+.cta-text {
+  position: relative;
+  z-index: 1;
+  will-change: transform;
 }
