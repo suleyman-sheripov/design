@@ -285,8 +285,21 @@ export function initIntro(root) {
     const dotCy = parseFloat(dot.style.top) + g.dotSize / 2;
 
     const anims = [];
+
+    /* fill: forwards, а НЕ both — и это здесь главное.
+
+       Шаги идут цепочкой с задержками. При fill: both анимация
+       применяет свой первый кадр ещё до собственного старта, а более
+       поздняя в стопке перебивает раннюю. В итоге с нулевой секунды
+       побеждал последний шаг, и шарик стоял на финальном месте всё
+       интро: движение было, но его никто не видел — сверху лежала
+       заливка будущего кадра.
+
+       При forwards анимация до старта не влияет ни на что, а после
+       конца держит последний кадр. Ровно та передача эстафеты,
+       которая цепочке и нужна. */
     const run = (el, frames, opts) => {
-      const a = el.animate(frames, Object.assign({ fill: 'both', easing: 'linear' }, opts));
+      const a = el.animate(frames, Object.assign({ fill: 'forwards', easing: 'linear' }, opts));
       anims.push(a);
       return a;
     };
