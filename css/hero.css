@@ -110,7 +110,6 @@
   transform: translateX(11px);
 }
 
-.intro-glyph,
 .intro-rest {
   font-family: var(--font-display);
   font-weight: var(--w-display);
@@ -742,4 +741,43 @@
   position: relative;
   z-index: 1;
   will-change: transform;
+}
+
+/* Глаза головы. Лежат выше слоя с фильтром: попади они под goo,
+   размылись бы вместе с телом и стали пятном. Зрачки ведут в ту
+   сторону, куда смотрит голова, — это и есть --gaze. */
+
+.cta-eyes {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  gap: 11px;
+  margin: -3px 0 0 -13px;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.cta-eyes i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--paper);
+  position: relative;
+}
+
+/* Зрачок ходит внутри белка, а не белок целиком: так голова
+   смотрит, а не просто едет */
+.cta-eyes i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translateX(calc(var(--gaze, 0) * 2px));
 }

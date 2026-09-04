@@ -1,17 +1,20 @@
-/* Главная кнопка — симбиот. Она не ждёт, пока на неё наведут:
-   на подходе курсора из её тела выходит капля, тянется навстречу
-   и втягивается обратно, когда рука уходит.
+/* Главная кнопка — симбиот.
 
-   Слияние капли с телом кнопки делает не JS, а SVG-фильтр goo:
-   размытие плюс резкий порог по альфе. Две отдельные фигуры,
-   попав в один порог, читаются как одна тягучая масса. Текст
-   лежит отдельным слоем поверх и в фильтр не попадает, иначе
-   он размылся бы вместе с фоном. */
+   В покое из неё время от времени высовывается голова с глазами,
+   ведёт из стороны в сторону и ныряет обратно. Если рука подходит,
+   пока голова снаружи, она ныряет резко; если подходит, когда голова
+   уже уходит, — ныряет ещё быстрее. Только после этого кнопка
+   начинает тянуться навстречу.
+
+   Слияние капли с телом делает не JS, а SVG-фильтр goo: размытие
+   плюс резкий порог по альфе. Две отдельные фигуры, попав в один
+   порог, читаются как одна тягучая масса. Подпись и глаза лежат
+   выше слоя с фильтром и в него не попадают, иначе размылись бы. */
 
 import { Spring2, Spring, onTick } from './physics.js';
 
-const REACH = 260;      // с какого расстояния кнопка чувствует руку
-const MAX_PULL = 78;    // дальше капля не тянется, связь рвётся
+const REACH = 250;      // с какого расстояния кнопка чувствует руку
+const OUT_MAX = 52;     // насколько далеко капля выходит за край
 
 export function initSymbiote(root = document) {
   const nodes = [...root.querySelectorAll('[data-symbiote]')];
@@ -39,19 +42,29 @@ export function initSymbiote(root = document) {
     goo.innerHTML = '<span class="cta-body"></span><span class="cta-drop"></span>';
     el.prepend(goo);
 
+    /* Глаза отдельным слоем: попади они под фильтр, размылись бы
+       вместе с телом и превратились в пятно */
+    const eyes = document.createElement('span');
+    eyes.className = 'cta-eyes';
+    eyes.setAttribute('aria-hidden', 'true');
+    eyes.innerHTML = '<i></i><i></i>';
+    el.prepend(eyes);
+
     const text = el.querySelector('.cta-text');
     if (!text) return null;
 
     const unit = {
-      el, text,
+      el, text, eyes,
       drop: goo.querySelector('.cta-drop'),
       pos: new Spring2(0, 0, { stiffness: 260, damping: 18 }),
       size: new Spring(0, { stiffness: 200, damping: 24 }),
       lean: new Spring2(0, 0, { stiffness: 190, damping: 20 }),
+      look: new Spring(0, { stiffness: 120, damping: 16 }),
       press: 1,
       mode: 'idle',
       wait: 2 + Math.random() * 3,
       sway: 0,
+      eyeOpen: 0,
     };
 
     el.addEventListener('pointerdown', () => { unit.press = 0.94; });
@@ -74,28 +87,26 @@ export function initSymbiote(root = document) {
     const d = Math.hypot(dx, dy);
     const near = Math.max(0, 1 - d / REACH);
 
-    if (near > 0) {
-      /* Рука рядом — что бы капля ни делала, она бросает это
-         и тянется навстречу. Голова прячется мгновенно, потому
-         что пружина доворачивает к новой цели, а не доигрывает
-         старую: ради этого движение и считается пружинами. */
-      u.mode = 'reach';
-      u.wait = idleWait();
+    if (near > 0 && headIsOut(u)) {
+      /* Рука подошла, пока голова снаружи. Из показа ныряем резко,
+         а если уже уходили — ещё быстрее: пружина не доигрывает
+         старую цель, а доворачивает к новой. */
+      u.mode = 'dive';
+      u.wait = u.mode === 'retract' ? 0.18 : 0.3;
+      u.size.k = 420;
+      u.size.c = 34;
+    }
 
-      /* Длина щупальца гаснет и от близости, и от дальности:
-         вплотную капля сидит в теле, далеко — связь уже порвана.
-         Максимум вылета приходится на середину пути. */
-      const pull = Math.min(d, MAX_PULL) * near;
-      const ux = d > 0.01 ? dx / d : 0;
-      const uy = d > 0.01 ? dy / d : 0;
-      u.pos.set(ux * pull, uy * pull);
-      u.size.target = near;
-      u.lean.set(ux * near * 7, uy * near * 7);
+    if (near > 0 && u.mode !== 'dive') {
+      reachTo(u, r, dx, dy, d, near);
+    } else if (u.mode === 'dive') {
+      dive(u, dt);
     } else if (u.focused) {
       u.mode = 'idle';
       u.pos.set(0, 0);
       u.size.target = 0.55;
       u.lean.set(0, 0);
+      u.eyeOpen = 0;
     } else {
       idleLife(u, dt, r);
     }
@@ -103,51 +114,79 @@ export function initSymbiote(root = document) {
     u.pos.step(dt);
     u.size.step(dt);
     u.lean.step(dt);
+    u.look.step(dt);
 
-    const s = Math.max(0, u.size.value);
-    u.drop.style.transform =
-      `translate3d(${u.pos.x.value.toFixed(2)}px, ${u.pos.y.value.toFixed(2)}px, 0) scale(${(s * 0.86).toFixed(3)})`;
+    render(u);
+  }
 
-    u.el.style.transform =
-      `translate3d(${u.lean.x.value.toFixed(2)}px, ${u.lean.y.value.toFixed(2)}px, 0) scale(${u.press})`;
+  /* Капля тянется к руке. Вылет считается ОТ КРАЯ кнопки в сторону
+     руки, а не от центра: кнопка втрое шире, чем выше, и от центра
+     вбок капля просто не успевала выйти из силуэта. */
+  function reachTo(u, r, dx, dy, d, near) {
+    u.mode = 'reach';
+    u.wait = idleWait();
+    u.size.k = 200;
+    u.size.c = 24;
+    u.eyeOpen = 0;
 
-    /* Подпись сдвигается втрое слабее тела: поверхность кнопки
-       тянется, а буквы по ней едут, а не приклеены намертво */
-    u.text.style.transform =
-      `translate3d(${(u.lean.x.value / 3).toFixed(2)}px, ${(u.lean.y.value / 3).toFixed(2)}px, 0)`;
+    const ux = d > 0.01 ? dx / d : 0;
+    const uy = d > 0.01 ? dy / d : -1;
+
+    const edge = edgeAlong(r, ux, uy);
+    const out = Math.min(d, OUT_MAX) * near;
+    const reach = edge * 0.55 + out;
+
+    u.pos.set(ux * reach, uy * reach);
+    u.size.target = 0.45 + near * 0.55;
+    u.lean.set(ux * near * 7, uy * near * 7);
+  }
+
+  function dive(u, dt) {
+    u.wait -= dt;
+    u.pos.set(0, 0);
+    u.size.target = 0;
+    u.lean.set(0, 0);
+    u.eyeOpen = 0;
+
+    if (u.wait <= 0) {
+      u.mode = 'idle';
+      u.wait = idleWait();
+      u.size.k = 200;
+      u.size.c = 24;
+    }
   }
 
   /* ── Жизнь в покое ───────────────────────────────────────
-     Пока руки нет, из верхнего края кнопки время от времени
-     поднимается голова, ведёт из стороны в сторону и уходит
-     обратно. Смысл в том, что кнопка ждёт, а не выключена. */
+     Пока руки нет, из верхнего края кнопки поднимается голова,
+     ведёт из стороны в сторону и уходит обратно. Смысл в том,
+     что кнопка ждёт, а не выключена. */
 
   function idleLife(u, dt, r) {
     u.wait -= dt;
 
-    if (u.mode === 'reach') {
-      /* Рука ушла — сначала полностью втянуться, и только потом
-         снова считать паузу до следующего показа */
-      u.mode = 'idle';
-      u.wait = idleWait();
-    }
+    if (u.mode === 'reach') { u.mode = 'idle'; u.wait = idleWait(); }
+
+    const lift = -(r.height / 2 + 22);
 
     switch (u.mode) {
       case 'peek':
-        u.size.target = 0.62;
-        u.pos.set(0, -(r.height / 2 + 16));
-        if (u.wait <= 0) { u.mode = 'look'; u.wait = 2.4; u.sway = 0; }
+        u.size.target = 0.66;
+        u.pos.set(0, lift);
+        u.eyeOpen = 1;
+        if (u.wait <= 0) { u.mode = 'look'; u.wait = 2.6; u.sway = 0; }
         break;
 
       case 'look': {
         /* Две волны разной частоты: голова ведёт неровно и не
            попадает в такт сама с собой */
         u.sway += dt;
-        const x = Math.sin(u.sway * 1.5) * 26 + Math.sin(u.sway * 0.7) * 9;
-        u.size.target = 0.62;
-        u.pos.set(x, -(r.height / 2 + 16) + Math.abs(Math.sin(u.sway * 1.5)) * 5);
-        u.lean.set(x * 0.12, -2);
-        if (u.wait <= 0) { u.mode = 'retract'; u.wait = 1.1; }
+        const x = Math.sin(u.sway * 1.4) * 30 + Math.sin(u.sway * 0.62) * 10;
+        u.size.target = 0.66;
+        u.pos.set(x, lift + Math.abs(Math.sin(u.sway * 1.4)) * 5);
+        u.lean.set(x * 0.1, -2);
+        u.look.target = x / 30;      // куда смотрят зрачки
+        u.eyeOpen = 1;
+        if (u.wait <= 0) { u.mode = 'retract'; u.wait = 1.2; }
         break;
       }
 
@@ -155,6 +194,8 @@ export function initSymbiote(root = document) {
         u.size.target = 0;
         u.pos.set(0, 0);
         u.lean.set(0, 0);
+        u.look.target = 0;
+        u.eyeOpen = 0;
         if (u.wait <= 0) { u.mode = 'idle'; u.wait = idleWait(); }
         break;
 
@@ -162,9 +203,48 @@ export function initSymbiote(root = document) {
         u.size.target = 0;
         u.pos.set(0, 0);
         u.lean.set(0, 0);
-        if (u.wait <= 0) { u.mode = 'peek'; u.wait = 0.9; }
+        u.eyeOpen = 0;
+        if (u.wait <= 0) { u.mode = 'peek'; u.wait = 1; }
     }
   }
+
+  function render(u) {
+    const s = Math.max(0, u.size.value);
+    const x = u.pos.x.value;
+    const y = u.pos.y.value;
+
+    u.drop.style.transform =
+      'translate3d(' + x.toFixed(2) + 'px, ' + y.toFixed(2) + 'px, 0) scale(' + (s * 0.86).toFixed(3) + ')';
+
+    /* Глаза едут вместе с головой и открываются только когда она
+       снаружи: в тянущейся капле глаз быть не должно */
+    u.eyes.style.opacity = (u.eyeOpen * Math.min(1, s / 0.5)).toFixed(3);
+    u.eyes.style.transform =
+      'translate3d(' + x.toFixed(2) + 'px, ' + y.toFixed(2) + 'px, 0) scale(' + Math.max(0.2, s).toFixed(3) + ')';
+    u.eyes.style.setProperty('--gaze', u.look.value.toFixed(3));
+
+    u.el.style.transform =
+      'translate3d(' + u.lean.x.value.toFixed(2) + 'px, ' + u.lean.y.value.toFixed(2) + 'px, 0) scale(' + u.press + ')';
+
+    /* Подпись сдвигается втрое слабее тела: поверхность кнопки
+       тянется, а буквы по ней едут, а не приклеены намертво */
+    u.text.style.transform =
+      'translate3d(' + (u.lean.x.value / 3).toFixed(2) + 'px, ' + (u.lean.y.value / 3).toFixed(2) + 'px, 0)';
+  }
+}
+
+/* Голова снаружи — значит её видно и есть чему нырять */
+function headIsOut(u) {
+  return (u.mode === 'peek' || u.mode === 'look' || u.mode === 'retract') && u.size.value > 0.08;
+}
+
+/* Расстояние от центра прямоугольника до края в заданную сторону */
+function edgeAlong(r, ux, uy) {
+  const a = r.width / 2;
+  const b = r.height / 2;
+  const tx = Math.abs(ux) > 1e-3 ? a / Math.abs(ux) : Infinity;
+  const ty = Math.abs(uy) > 1e-3 ? b / Math.abs(uy) : Infinity;
+  return Math.min(tx, ty);
 }
 
 /* Пауза между показами — вразнобой, чтобы кнопка не тикала
@@ -181,9 +261,11 @@ function injectFilter() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'goo-defs');
   svg.setAttribute('aria-hidden', 'true');
+  /* Область фильтра щедрая: капля уходит далеко за габарит кнопки,
+     и по умолчанию её обрезало бы вместе с размытием */
   svg.innerHTML = `
     <defs>
-      <filter id="goo" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <filter id="goo" x="-130%" y="-260%" width="360%" height="620%" color-interpolation-filters="sRGB">
         <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur"/>
         <feColorMatrix in="blur" type="matrix"
           values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11" result="goo"/>
@@ -192,4 +274,3 @@ function injectFilter() {
     </defs>`;
   document.body.append(svg);
 }
-

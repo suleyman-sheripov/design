@@ -1,11 +1,12 @@
 /* Интро первого экрана.
 
-   Шарик медленно выкатывается слева. Ему в путь падает S, он
-   ударяется и откатывается назад. Пока катится обратно, перед ним
-   падает H. Буквы упали далеко друг от друга и начинают сходиться,
-   увозя замок на его место; шарик зажат между ними и стучит об обе
-   стенки всё чаще и короче. В момент схлопывания буквы подменяются
-   знаком Ш, а шарик садится точкой.
+   Пустая страница. Слева выкатывается зелёный шарик. Перед ним
+   возникает вторая половина имени — ERIPOV. Шарик ударяется об неё
+   и катится обратно; на обратном ходу перед ним встаёт первая
+   половина — знак Ш. Шарик ударяется и об неё, после чего обе
+   половины начинают смыкаться, а шарик частит между ними, пока
+   места не остаётся. Он и есть точка в «Ш.ERIPOV» — на неё и
+   садится. Дальше по одному проявляются блоки первого экрана.
 
    Геометрия замка не задана числами, а считается из метрик шрифта:
    высота знака равна высоте прописных, низ знака и низ точки садятся
@@ -13,14 +14,13 @@
    ниже ERIPOV ни при каком кегле. */
 
 const SCENE_H = 150;    // совпадает с .intro-scene в hero.css
-const TEXT_TOP = 50;    // .intro-rest / .intro-glyph top в hero.css
+const TEXT_TOP = 50;    // .intro-rest top в hero.css
 const MARK_RATIO = 483 / 300;
 
 /* Отступы внутри замка — доли высоты прописных, а не пиксели:
    при смене кегля ритм остаётся тем же */
 const GAP_MARK_DOT = 0.20;
 const GAP_DOT_TEXT = 0.16;
-const REST_SLIDE = 26;  // на сколько ERIPOV выезжает из-за знака
 
 /* Шарик и точка тоже доли высоты прописных */
 const BALL_RATIO = 0.78;
@@ -28,6 +28,10 @@ const DOT_RATIO = 0.30;
 
 /* Старт за левым краем сцены: .intro обрезает всё, что левее нуля */
 const BALL_START = -90;
+
+/* Насколько далеко половины стоят до смыкания */
+const FAR_RIGHT = 175;
+const FAR_LEFT = 96;
 
 const SESSION_KEY = 'intro-seen';
 
@@ -40,8 +44,6 @@ export function initIntro(root) {
   if (!scene) return { done: Promise.resolve() };
 
   const ball = root.querySelector('#introBall');
-  const gS   = root.querySelector('#introS');
-  const gH   = root.querySelector('#introH');
   const mark = root.querySelector('#introMark');
   const dot  = root.querySelector('#introDot');
   const rest = root.querySelector('#introRest');
@@ -53,9 +55,9 @@ export function initIntro(root) {
   /* Считается в layout(), используется в play() */
   const g = {
     ballSize: 33, dotSize: 13, lockupW: 450, ballTop: 60,
-    dotX: 90, restX: 130,
-    hX: 60, sX: 190, hEnd: 0, sEnd: 46,
-    ballStop: 155, ballBack: 119, ballTrap: 43,
+    markW: 68, dotX: 90, restX: 130,
+    markFar: -96, restFar: 305,
+    hitRest: 240, backOff: 195, hitMark: 60,
   };
 
   layout();
@@ -84,8 +86,8 @@ export function initIntro(root) {
     const capH = m.capH || size * 0.75;
     const baseline = TEXT_TOP + m.baselineFromTop;
 
-    const markW = capH * MARK_RATIO;
-    markSvg.style.width = markW.toFixed(1) + 'px';
+    g.markW = capH * MARK_RATIO;
+    markSvg.style.width = g.markW.toFixed(1) + 'px';
     markSvg.style.height = capH.toFixed(1) + 'px';
 
     g.ballSize = capH * BALL_RATIO;
@@ -95,32 +97,25 @@ export function initIntro(root) {
 
     /* Низ знака и низ точки садятся на базовую линию текста */
     place(mark, 0, baseline - capH);
-    g.dotX = markW + capH * GAP_MARK_DOT;
+    g.dotX = g.markW + capH * GAP_MARK_DOT;
     place(dot, g.dotX, baseline - g.dotSize);
 
     g.restX = g.dotX + g.dotSize + capH * GAP_DOT_TEXT;
-    place(rest, g.restX - REST_SLIDE);
+    place(rest, g.restX);
     g.lockupW = g.restX + rest.offsetWidth;
 
     /* Шарик едет по середине прописных */
     g.ballTop = baseline - capH / 2 - g.ballSize / 2;
     place(ball, BALL_START, g.ballTop);
 
-    /* У букв по две координаты: куда упали и куда пришли. Падают
-       далеко друг от друга, сходятся — и этим сдвигом увозят
-       собранный замок к левому краю. */
-    const hW = gH.offsetWidth;
-    g.hEnd = 0;
-    g.sEnd = hW + 6;
-    g.hX = g.hEnd + 62;
-    g.sX = g.sEnd + 148;
+    /* До смыкания половины стоят врозь. У знака отрицательная
+       координата — он ждёт за левым краем и выходит оттуда. */
+    g.restFar = g.restX + FAR_RIGHT;
+    g.markFar = -(g.markW + FAR_LEFT);
 
-    g.ballStop = g.sX - g.ballSize - 2;   // упирается в левый край S
-    g.ballBack = g.ballStop - 38;         // отскок назад влево
-    g.ballTrap = g.hEnd + hW + 3;         // стенка, у которой его зажимает
-
-    place(gH, g.hX);
-    place(gS, g.sX);
+    g.hitRest = g.restFar - g.ballSize - 2;   // упирается в ERIPOV
+    g.backOff = g.hitRest - 74;               // откат влево
+    g.hitMark = g.markFar + g.markW + 2;      // упирается в знак
   }
 
   function onResize() { layout(); fit(); if (reduce || seen) settle(); }
@@ -146,12 +141,11 @@ export function initIntro(root) {
 
   function settle() {
     ball.style.opacity = '0';
-    gS.style.opacity = '0';
-    gH.style.opacity = '0';
     mark.style.opacity = '1';
+    mark.style.transform = 'none';
     dot.style.opacity = '1';
     rest.style.opacity = '1';
-    rest.style.transform = 'translateX(' + REST_SLIDE + 'px)';
+    rest.style.transform = 'none';
   }
 
   /* ── Сборка ────────────────────────────────────────────── */
@@ -161,8 +155,9 @@ export function initIntro(root) {
        позиции переводятся в смещение. Угол берётся из пройденного
        пути и длины окружности — он катится, а не скользит. */
     const at = x => x - BALL_START;
-    const spin = x => (at(x) / (Math.PI * g.ballSize)) * 360;
-    const roll = (x) => 'translateX(' + at(x).toFixed(1) + 'px) rotate(' + spin(x).toFixed(1) + 'deg)';
+    const roll = x =>
+      'translateX(' + at(x).toFixed(1) + 'px) rotate(' +
+      ((at(x) / (Math.PI * g.ballSize)) * 360).toFixed(1) + 'deg)';
 
     const ballCx = BALL_START + g.ballSize / 2;
     const ballCy = g.ballTop + g.ballSize / 2;
@@ -176,92 +171,91 @@ export function initIntro(root) {
       return a;
     };
 
-    // 1. Шарик медленно выкатывается из левого края
+    // 1. Шарик медленно выкатывается слева
     run(ball, [
       { transform: roll(BALL_START) },
-      { transform: roll(g.ballStop) },
-    ], { duration: 1400, easing: EASE_ROLL });
+      { transform: roll(g.hitRest) },
+    ], { duration: 1250, easing: EASE_ROLL });
 
-    // 2. Прямо перед ним быстро падает S
-    run(gS, [
-      { transform: 'translateY(-280px)', opacity: 0, offset: 0 },
-      { transform: 'translateY(-280px)', opacity: 1, offset: 0.04 },
-      { transform: 'translateY(0)',      opacity: 1, offset: 1 },
-    ], { duration: 240, delay: 1160, easing: EASE_FALL });
+    /* Обе половины уже стоят на финальных left, поэтому дальняя
+       позиция задаётся смещением, а смыкание — возвратом в ноль.
+       Раньше знак уезжал вправо именно потому, что смещение шло
+       в обратную сторону. */
+    const restOff = g.restFar - g.restX;   // ERIPOV ждёт справа
+    const markOff = g.markFar;             // знак ждёт за левым краем
 
-    // 3. Удар: шарик откатывается назад, S вздрагивает
+    // 2. Перед ним встаёт вторая половина имени
+    run(rest, [
+      { transform: 'translate(' + restOff.toFixed(1) + 'px, -180px)', opacity: 0, offset: 0 },
+      { transform: 'translate(' + restOff.toFixed(1) + 'px, -180px)', opacity: 1, offset: 0.05 },
+      { transform: 'translate(' + restOff.toFixed(1) + 'px, 0)',      opacity: 1, offset: 1 },
+    ], { duration: 230, delay: 1020, easing: EASE_FALL });
+
+    // 3. Удар: шарик откатывается, ERIPOV вздрагивает
     run(ball, [
-      { transform: roll(g.ballStop) },
-      { transform: roll(g.ballBack) },
-    ], { duration: 220, delay: 1400, easing: EASE_OUT });
+      { transform: roll(g.hitRest) },
+      { transform: roll(g.backOff) },
+    ], { duration: 340, delay: 1250, easing: EASE_OUT });
 
-    run(gS, [
-      { transform: 'translateX(0)' },
-      { transform: 'translateX(9px)' },
-      { transform: 'translateX(0)' },
-    ], { duration: 230, delay: 1400, easing: EASE_OUT });
+    run(rest, [
+      { transform: 'translateX(' + restOff.toFixed(1) + 'px)' },
+      { transform: 'translateX(' + (restOff + 8).toFixed(1) + 'px)' },
+      { transform: 'translateX(' + restOff.toFixed(1) + 'px)' },
+    ], { duration: 240, delay: 1250, easing: EASE_OUT });
 
-    // 4. Пока катится обратно, перед ним падает H
-    run(gH, [
-      { transform: 'translateY(-280px)', opacity: 0, offset: 0 },
-      { transform: 'translateY(-280px)', opacity: 1, offset: 0.04 },
-      { transform: 'translateY(0)',      opacity: 1, offset: 1 },
-    ], { duration: 250, delay: 1520, easing: EASE_FALL });
+    // 4. На обратном ходу перед ним встаёт первая половина — знак
+    run(mark, [
+      { transform: 'translate(' + markOff.toFixed(1) + 'px, -180px)', opacity: 0, offset: 0 },
+      { transform: 'translate(' + markOff.toFixed(1) + 'px, -180px)', opacity: 1, offset: 0.05 },
+      { transform: 'translate(' + markOff.toFixed(1) + 'px, 0)',      opacity: 1, offset: 1 },
+    ], { duration: 230, delay: 1400, easing: EASE_FALL });
 
-    // 5. Буквы сходятся и этим же движением увозят замок влево
-    run(gH, [
-      { transform: 'translateX(0)' },
-      { transform: 'translateX(' + (g.hEnd - g.hX) + 'px)' },
-    ], { duration: 340, delay: 1790, easing: EASE_OUT });
-
-    run(gS, [
-      { transform: 'translateX(0)' },
-      { transform: 'translateX(' + (g.sEnd - g.sX) + 'px)' },
-    ], { duration: 340, delay: 1790, easing: EASE_OUT });
-
-    // 6. Дробь: стенки сходятся, шарик бьётся об обе всё чаще и
-    //    короче. Амплитуды затухают, поэтому слышно «тык-тык-тык».
-    const knocks = [0.66, -0.47, 0.32, -0.2, 0.12, -0.06, 0];
+    // 5. Шарик докатывается до знака и ударяется об него
     run(ball, [
-      { transform: roll(g.ballBack), offset: 0 },
-      ...knocks.map((k, i) => ({
-        transform: roll(g.ballTrap + k * 44),
-        offset: (i + 1) / (knocks.length + 1),
-      })),
-      { transform: roll(g.ballTrap), offset: 1 },
-    ], { duration: 640, delay: 1830 });
-
-    // 7. Держать шарика больше нечем — выстреливает вверх и садится точкой
-    run(ball, [
-      { transform: roll(g.ballTrap) + ' translateY(0) scale(1)', offset: 0 },
-      { transform: roll(g.ballTrap) + ' translateY(-4px) scale(.74,1.24)', offset: 0.14 },
-      { transform: 'translateX(' + (dotCx - ballCx).toFixed(1) + 'px) translateY(-92px) scale(.62)', offset: 0.58 },
-      { transform: 'translateX(' + (dotCx - ballCx).toFixed(1) + 'px) translateY(' + (dotCy - ballCy).toFixed(1) + 'px) scale(' + (g.dotSize / g.ballSize).toFixed(3) + ')', offset: 1 },
-    ], { duration: 470, delay: 2470, easing: EASE_OUT });
-
-    run(ball, [{ opacity: 1 }, { opacity: 0 }], { duration: 1, delay: 2936 });
-
-    // 8. Подмена спрятана в схлопывании: буквы гаснут за 130,
-    //    знак встаёт за 190 — шва не видно
-    run(gS, [{ opacity: 1 }, { opacity: 0 }], { duration: 130, delay: 2400 });
-    run(gH, [{ opacity: 1 }, { opacity: 0 }], { duration: 130, delay: 2400 });
+      { transform: roll(g.backOff) },
+      { transform: roll(g.hitMark) },
+    ], { duration: 380, delay: 1600, easing: EASE_ROLL });
 
     run(mark, [
-      { opacity: 0, transform: 'scale(.88)' },
-      { opacity: 1, transform: 'scale(1)' },
-    ], { duration: 190, delay: 2420, easing: EASE_OUT });
+      { transform: 'translateX(' + markOff.toFixed(1) + 'px)' },
+      { transform: 'translateX(' + (markOff - 7).toFixed(1) + 'px)' },
+      { transform: 'translateX(' + markOff.toFixed(1) + 'px)' },
+    ], { duration: 240, delay: 1980, easing: EASE_OUT });
 
-    // 9. Точка приземляется
-    run(dot, [
-      { opacity: 0, transform: 'scale(1.4)' },
-      { opacity: 1, transform: 'scale(1)' },
-    ], { duration: 170, delay: 2900, easing: EASE_OUT });
+    // 6. Половины смыкаются — возвращаются из дальних точек в ноль
+    run(mark, [
+      { transform: 'translateX(' + markOff.toFixed(1) + 'px)' },
+      { transform: 'translateX(0)' },
+    ], { duration: 560, delay: 2060, easing: EASE_OUT });
 
-    // 10. ERIPOV выезжает из-за знака
     run(rest, [
-      { opacity: 0, transform: 'translateX(0)' },
-      { opacity: 1, transform: 'translateX(' + REST_SLIDE + 'px)' },
-    ], { duration: 380, delay: 2620, easing: EASE_OUT });
+      { transform: 'translateX(' + restOff.toFixed(1) + 'px)' },
+      { transform: 'translateX(0)' },
+    ], { duration: 560, delay: 2060, easing: EASE_OUT });
+
+    // 7. Шарик частит между сходящимися стенками. Амплитуды затухают,
+    //    поэтому удары слышны как «тык-тык-тык», а не как качание.
+    const knocks = [-0.9, 0.72, -0.55, 0.4, -0.28, 0.18, -0.1, 0.05, 0];
+    run(ball, [
+      { transform: roll(g.hitMark), offset: 0 },
+      ...knocks.map((k, i) => ({
+        transform: roll(dotCx - g.ballSize / 2 + k * 62),
+        offset: (i + 1) / (knocks.length + 1),
+      })),
+      { transform: roll(dotCx - g.ballSize / 2), offset: 1 },
+    ], { duration: 700, delay: 2100 });
+
+    // 8. Шарик встаёт на своё место — он и есть точка
+    run(ball, [
+      { transform: roll(dotCx - g.ballSize / 2) + ' translateY(0) scale(1)' },
+      {
+        transform: 'translateX(' + (dotCx - ballCx).toFixed(1) + 'px) translateY(' +
+          (dotCy - ballCy).toFixed(1) + 'px) scale(' + (g.dotSize / g.ballSize).toFixed(3) + ')',
+      },
+    ], { duration: 260, delay: 2800, easing: EASE_OUT });
+
+    run(ball, [{ opacity: 1 }, { opacity: 0 }], { duration: 1, delay: 3056 });
+    run(dot, [{ opacity: 0 }, { opacity: 1 }], { duration: 1, delay: 3056 });
 
     return Promise.all(anims.map(a => a.finished.catch(() => {})));
   }
