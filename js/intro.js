@@ -64,7 +64,11 @@ export function initIntro(root) {
   fit();
   addEventListener('resize', onResize, { passive: true });
   /* Первый расчёт идёт на подменном шрифте — пересчитываем, когда придёт свой */
-  if (document.fonts?.ready) document.fonts.ready.then(() => { layout(); fit(); });
+  if (document.fonts?.ready) document.fonts.ready.then(() => {
+    if (curtain) return;   // интро пересчитает само, когда будет готово
+    layout();
+    fit();
+  });
 
   if (reduce || seen) {
     settle();
@@ -82,7 +86,16 @@ export function initIntro(root) {
      собираться первый экран. */
 
   async function run() {
+    /* Занавес поднимаем сразу, а хореографию начинаем только когда
+       пришёл свой шрифт. Иначе пересчёт геометрии срабатывает прямо
+       посреди проката: left у шарика и половин переставляются, всё
+       телепортируется, и шарик перестаёт откуда-либо выкатываться. */
     enterCurtain();
+
+    if (document.fonts?.ready) await document.fonts.ready;
+    layout();
+    placeCurtain();
+
     await play();
     await flyHome();
     exitCurtain();
@@ -200,7 +213,12 @@ export function initIntro(root) {
     g.hitMark = g.markFar + g.markW + 2;      // упирается в знак
   }
 
-  function onResize() { layout(); fit(); if (reduce || seen) settle(); }
+  function onResize() {
+    if (curtain) return;   // менять размер посреди интро нечего
+    layout();
+    fit();
+    if (reduce || seen) settle();
+  }
 
   /* Масштабируем по ширине собранного замка, а не всей сцены:
      хвост сцены — разгон для шарика, он всегда за краем. */

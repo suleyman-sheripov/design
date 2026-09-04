@@ -15,7 +15,7 @@ import { initTools } from './tools.js';
 const intro = initIntro(document);
 
 initCursor();
-initSymbiote();
+const symbiote = initSymbiote();
 initWork(document);
 
 renderProfile().then(() => {
@@ -27,7 +27,12 @@ renderProfile().then(() => {
    положенного: если шрифты или JSON застряли, страница всё равно
    должна открыться. Пустой экран — худшее, чем можно ответить
    на медленную сеть. */
-Promise.race([intro.done, wait(2600)]).then(revealAll);
+Promise.race([intro.done, wait(2600)]).then(() => {
+  revealAll();
+  /* Голова здоровается один раз сразу после сборки экрана,
+     дальше показывается вразнобой */
+  symbiote?.wake();
+});
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));

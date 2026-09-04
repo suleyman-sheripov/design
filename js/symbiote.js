@@ -36,6 +36,17 @@ export function initSymbiote(root = document) {
 
   onTick(dt => { for (const u of units) update(u, dt); });
 
+  /* Первый показ головы даётся сигналом снаружи, когда первый экран
+     уже собрался: по общему таймеру он приходился на занавес интро
+     и уходил в пустоту. Дальше — обычная случайная пауза. */
+  return {
+    wake() {
+      for (const u of units) {
+        if (u.mode === 'idle') u.wait = 0.7;
+      }
+    },
+  };
+
   function build(el) {
     const goo = document.createElement('span');
     goo.className = 'cta-goo';
@@ -64,7 +75,7 @@ export function initSymbiote(root = document) {
       glanceIn: 0,
       press: 1,
       mode: 'idle',
-      wait: 2 + Math.random() * 3,
+      wait: idleWait(),
       sway: 0,
       eyeOpen: 0,
     };
