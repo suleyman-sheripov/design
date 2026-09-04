@@ -17,7 +17,7 @@ html.has-cursor textarea {
 }
 
 .cursor {
-  --cursor-ink: var(--moss);
+  --cursor-ink: var(--ink);
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -29,8 +29,10 @@ html.has-cursor textarea {
 
 .cursor.is-on { opacity: 1; }
 
-/* На тёмной зоне метка перекрашивается в бумагу: мох по ночи не читается */
-.cursor.on-night { --cursor-ink: var(--night-ink); }
+/* На любой залитой поверхности курсор уходит в бумагу: чернила по
+   мху, охре и ночи не читаются. Раньше он сам был мховым и на
+   мховой визитке пропадал совсем. */
+.cursor.on-dark { --cursor-ink: var(--paper); }
 
 .cursor-dot,
 .cursor-mark,

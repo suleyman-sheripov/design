@@ -13,8 +13,8 @@
    на базовую линию текста. Поэтому Ш не может оказаться выше или
    ниже ERIPOV ни при каком кегле. */
 
-const SCENE_H = 150;    // совпадает с .intro-scene в hero.css
-const TEXT_TOP = 50;    // .intro-rest top в hero.css
+const SCENE_H = 118;   // совпадает с .intro-scene в hero.css
+const TEXT_TOP = 38;   // .intro-rest top в hero.css
 const MARK_RATIO = 483 / 300;
 
 /* Отступы внутри замка — доли высоты прописных, а не пиксели:
@@ -55,7 +55,7 @@ export function initIntro(root) {
   /* Считается в layout(), используется в play() */
   const g = {
     ballSize: 33, dotSize: 13, lockupW: 450, ballTop: 60,
-    markW: 68, dotX: 90, restX: 130,
+    markW: 68, dotX: 90, restX: 130, shiftY: 0,
     markFar: -96, restFar: 305,
     hitRest: 240, backOff: 195, hitMark: 60,
   };
@@ -125,6 +125,7 @@ export function initIntro(root) {
   function fit() {
     const room = scene.parentElement.clientWidth || g.lockupW;
     const s = Math.min(1, room / g.lockupW);
+
     scene.style.transform = 'scale(' + s + ')';
     scene.parentElement.style.height = Math.round(SCENE_H * s) + 'px';
   }

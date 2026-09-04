@@ -14,7 +14,7 @@
 import { Spring2, Spring, onTick } from './physics.js';
 
 const REACH = 250;      // с какого расстояния кнопка чувствует руку
-const OUT_MAX = 52;     // насколько далеко капля выходит за край
+const OUT_MAX = 68;     // насколько далеко капля выходит за край
 
 export function initSymbiote(root = document) {
   const nodes = [...root.querySelectorAll('[data-symbiote]')];
@@ -59,7 +59,8 @@ export function initSymbiote(root = document) {
       pos: new Spring2(0, 0, { stiffness: 260, damping: 18 }),
       size: new Spring(0, { stiffness: 200, damping: 24 }),
       lean: new Spring2(0, 0, { stiffness: 190, damping: 20 }),
-      look: new Spring(0, { stiffness: 120, damping: 16 }),
+      gaze: new Spring2(0, 0, { stiffness: 150, damping: 15 }),
+      glanceIn: 0,
       press: 1,
       mode: 'idle',
       wait: 2 + Math.random() * 3,
@@ -114,7 +115,7 @@ export function initSymbiote(root = document) {
     u.pos.step(dt);
     u.size.step(dt);
     u.lean.step(dt);
-    u.look.step(dt);
+    u.gaze.step(dt);
 
     render(u);
   }
@@ -134,7 +135,7 @@ export function initSymbiote(root = document) {
 
     const edge = edgeAlong(r, ux, uy);
     const out = Math.min(d, OUT_MAX) * near;
-    const reach = edge * 0.55 + out;
+    const reach = edge * 0.92 + out;
 
     u.pos.set(ux * reach, uy * reach);
     u.size.target = 0.45 + near * 0.55;
@@ -173,19 +174,37 @@ export function initSymbiote(root = document) {
         u.size.target = 0.66;
         u.pos.set(0, lift);
         u.eyeOpen = 1;
-        if (u.wait <= 0) { u.mode = 'look'; u.wait = 2.6; u.sway = 0; }
+        if (u.wait <= 0) {
+          u.mode = 'look';
+          /* Сколько взглядов успеет сделать — тоже вразнобой:
+             иногда один, иногда четыре */
+          u.wait = 1.8 + Math.random() * 3.4;
+          u.glanceIn = 0;
+        }
         break;
 
       case 'look': {
-        /* Две волны разной частоты: голова ведёт неровно и не
-           попадает в такт сама с собой */
-        u.sway += dt;
-        const x = Math.sin(u.sway * 1.4) * 30 + Math.sin(u.sway * 0.62) * 10;
+        /* Взгляд не описывает круг по расписанию, а перескакивает:
+           выбирает случайное направление, держит его случайное время
+           и переводит дальше. Иногда вбок, иногда вверх, иногда по
+           диагонали — потому что угол берётся из всей окружности. */
+        u.glanceIn -= dt;
+        if (u.glanceIn <= 0) {
+          const angle = Math.random() * Math.PI * 2;
+          const far = 0.4 + Math.random() * 0.6;
+          /* По вертикали размах меньше: глаз в голове ходит
+             в приплюснутом поле, а не в круге */
+          u.gaze.set(Math.cos(angle) * far, Math.sin(angle) * far * 0.62);
+          u.glanceIn = 0.45 + Math.random() * 1.3;
+        }
+
         u.size.target = 0.66;
-        u.pos.set(x, lift + Math.abs(Math.sin(u.sway * 1.4)) * 5);
-        u.lean.set(x * 0.1, -2);
-        u.look.target = x / 30;      // куда смотрят зрачки
+        /* Голова тянется за взглядом, но слабее его: сначала глаза,
+           потом уже сама повернулась */
+        u.pos.set(u.gaze.x.value * 26, lift + u.gaze.y.value * 8);
+        u.lean.set(u.gaze.x.value * 3, -2);
         u.eyeOpen = 1;
+
         if (u.wait <= 0) { u.mode = 'retract'; u.wait = 1.2; }
         break;
       }
@@ -194,7 +213,7 @@ export function initSymbiote(root = document) {
         u.size.target = 0;
         u.pos.set(0, 0);
         u.lean.set(0, 0);
-        u.look.target = 0;
+        u.gaze.set(0, 0);
         u.eyeOpen = 0;
         if (u.wait <= 0) { u.mode = 'idle'; u.wait = idleWait(); }
         break;
@@ -221,7 +240,8 @@ export function initSymbiote(root = document) {
     u.eyes.style.opacity = (u.eyeOpen * Math.min(1, s / 0.5)).toFixed(3);
     u.eyes.style.transform =
       'translate3d(' + x.toFixed(2) + 'px, ' + y.toFixed(2) + 'px, 0) scale(' + Math.max(0.2, s).toFixed(3) + ')';
-    u.eyes.style.setProperty('--gaze', u.look.value.toFixed(3));
+    u.eyes.style.setProperty('--gaze-x', u.gaze.x.value.toFixed(3));
+    u.eyes.style.setProperty('--gaze-y', u.gaze.y.value.toFixed(3));
 
     u.el.style.transform =
       'translate3d(' + u.lean.x.value.toFixed(2) + 'px, ' + u.lean.y.value.toFixed(2) + 'px, 0) scale(' + u.press + ')';
@@ -250,7 +270,7 @@ function edgeAlong(r, ux, uy) {
 /* Пауза между показами — вразнобой, чтобы кнопка не тикала
    как метроном */
 function idleWait() {
-  return 6 + Math.random() * 3.5;
+  return 9 + Math.random() * 11;
 }
 
 /* Фильтр живёт в одном скрытом SVG на документ: несколько копий

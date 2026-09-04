@@ -81,7 +81,7 @@
 .intro-scene {
   position: relative;
   width: 800px;
-  height: 150px;
+  height: 118px;
   flex: none;
   transform-origin: left center;
 }
@@ -116,13 +116,13 @@
   font-size: 56px;
   line-height: 1;
   letter-spacing: -0.04em;
-  top: 50px;
+  top: 38px;
   opacity: 0;
 }
 
 .intro-rest { white-space: nowrap; }
-.intro-mark { top: 83px; opacity: 0; }
-.intro-mark svg { width: 91.8px; height: 57px; color: var(--ink); }
+.intro-mark { top: 83px; opacity: 0; line-height: 0; }
+.intro-mark svg { display: block; width: 91.8px; height: 57px; color: var(--ink); }
 
 .intro-dot {
   width: 18px;
@@ -316,7 +316,21 @@
 /* Круглая печать: медленно доворачивается от прокрутки */
 .stamp { width: clamp(58px, 7vw, 84px); height: auto; flex: none; color: var(--moss-on); }
 .stamp text { font-size: 7.8px; letter-spacing: 0.08em; font-weight: 600; fill: currentColor; opacity: 0.75; }
-.stamp-ring { transform-origin: 50% 50%; }
+/* Печать поворачивается сама: медленно, ровно, без остановки.
+   Постоянное вращение — это CSS-анимация: она идёт мимо основного
+   потока и не спотыкается, пока страница что-то грузит. */
+.stamp-ring {
+  transform-origin: 50% 50%;
+  animation: stamp-spin 34s linear infinite;
+}
+
+@keyframes stamp-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp-ring { animation: none; }
+}
 
 /* ── Высказывание ──────────────────────────────────────── */
 
@@ -779,5 +793,16 @@
   height: 4px;
   border-radius: 50%;
   background: var(--ink);
-  transform: translateX(calc(var(--gaze, 0) * 2px));
+  transform: translate(calc(var(--gaze-x, 0) * 2.1px), calc(var(--gaze-y, 0) * 1.8px));
 }
+
+/* Статус переехал в визитку: это факт о владельце, ему место
+   рядом с почтой, а не в навигации */
+.card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  opacity: 0.85;
+}
+
+.card-status .status-dot { background: var(--moss-on); }

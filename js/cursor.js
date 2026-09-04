@@ -12,6 +12,9 @@ import { Spring2, onTick } from './physics.js';
 
 const HOT = 'a[href], button, [data-cursor]';
 
+/* Поверхности, на которых чернильный курсор пропадает */
+const DARK = '[data-tone="night"], .tile--moss, .tile--amber, .tile--night, .cta';
+
 /* Радиус, за которым притяжение уже не чувствуется, и предел
    вылета точки: дальше она вышла бы за кольцо и связь порвалась */
 const REACH = 120;
@@ -76,8 +79,8 @@ export function initCursor(root = document) {
     const next = under ? under.closest(HOT) : null;
     if (next !== hot) setHot(next);
 
-    /* Мох по тёмной зоне не читается: над ней курсор уходит в бумагу */
-    el.classList.toggle('on-night', Boolean(under?.closest('[data-tone="night"]')));
+    /* Над залитой поверхностью курсор уходит в бумагу */
+    el.classList.toggle('on-dark', Boolean(under?.closest(DARK)));
   }
 
   function hide() {
