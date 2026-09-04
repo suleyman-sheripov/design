@@ -835,3 +835,14 @@ html.is-intro body { overflow: hidden; }
 /* Во весь экран знак набирается чернилами: на бумаге мховый
    вариант из шапки потерялся бы */
 .intro-scene.is-curtain .intro-mark svg { color: var(--ink); }
+
+/* Статус стоит сразу под призывом: он отвечает на вопрос, который
+   возникает ровно в момент, когда рука тянется к кнопке */
+.cta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -0.6rem 0 0;
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+}

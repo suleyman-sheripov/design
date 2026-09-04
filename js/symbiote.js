@@ -14,7 +14,8 @@
 import { Spring2, Spring, onTick } from './physics.js';
 
 const REACH = 250;      // с какого расстояния кнопка чувствует руку
-const OUT_MAX = 68;     // насколько далеко капля выходит за край
+const OUT_MAX = 52;     // запас хода, дальше вступает предел по радиусу
+const DROP_R = 29;      // радиус .cta-drop в CSS, из него считается предел
 
 export function initSymbiote(root = document) {
   const nodes = [...root.querySelectorAll('[data-symbiote]')];
@@ -133,9 +134,18 @@ export function initSymbiote(root = document) {
     const ux = d > 0.01 ? dx / d : 0;
     const uy = d > 0.01 ? dy / d : -1;
 
+    /* Капля не может уйти дальше, чем на 62% своего радиуса за край:
+       за этим пределом плёнка goo перестаёт мостить разрыв и капля
+       читается как отдельный кружок. Раньше по вертикали выходило
+       92 px от центра при радиусе 25 — она и отрывалась.
+
+       Вбок капля всё равно уходит дальше, потому что там дальше сам
+       край: у кнопки 181x53 до бокового края 90 px, до верхнего 26.
+       Наружу же она высовывается одинаково со всех сторон. */
     const edge = edgeAlong(r, ux, uy);
+    const dropR = DROP_R * Math.max(0.2, u.size.target) * 0.86;
     const out = Math.min(d, OUT_MAX) * near;
-    const reach = edge * 0.92 + out;
+    const reach = edge + Math.min(out, dropR * 0.62);
 
     u.pos.set(ux * reach, uy * reach);
     u.size.target = 0.45 + near * 0.55;
@@ -167,7 +177,7 @@ export function initSymbiote(root = document) {
 
     if (u.mode === 'reach') { u.mode = 'idle'; u.wait = idleWait(); }
 
-    const lift = -(r.height / 2 + 22);
+    const lift = -(r.height / 2 + DROP_R * 0.55);
 
     switch (u.mode) {
       case 'peek':
