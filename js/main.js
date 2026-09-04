@@ -10,7 +10,6 @@ import { initCursor } from './cursor.js';
 import { initSymbiote } from './symbiote.js';
 import { initLettering } from './lettering.js';
 import { initWork } from './work.js';
-import { initTools } from './tools.js';
 
 const intro = initIntro(document);
 
@@ -19,7 +18,6 @@ const symbiote = initSymbiote();
 initWork(document);
 
 renderProfile().then(() => {
-  initTools(document);
   initLettering(document);
 });
 
@@ -47,17 +45,17 @@ async function renderProfile() {
     if (!res.ok) throw new Error(String(res.status));
     profile = await res.json();
   } catch {
-    /* Реестр и инструменты живут только в JSON: без него их нечем
-       заполнить, и разделы снимаются целиком. Контакты остаются:
+    /* Опыт и инструменты живут только в JSON: без него их нечем
+       заполнить, и плитки снимаются целиком. Контакты остаются:
        они есть в разметке. */
-    drop('.ledger');
-    drop('.tools');
+    drop('.t-track');
+    drop('.t-kit');
     return;
   }
 
   applyContacts(profile);
-  renderLedger(profile.track || []);
-  renderTools(profile.tools || []);
+  renderTrack(profile.track || []);
+  renderKit(profile.tools || []);
 }
 
 function applyContacts({ email, phone, city, links = {} }) {
@@ -93,64 +91,65 @@ function applyContacts({ email, phone, city, links = {} }) {
   }
 }
 
-/* ── Реестр ────────────────────────────────────────────── */
+/* ── Опыт ──────────────────────────────────────────────────
+   Свежее место сверху — так же, как оно лежит в JSON. Точка на
+   вертикальной нити отмечает каждое, дата стоит справа: строка
+   читается как «кем и когда», а не как абзац. */
 
-function renderLedger(track) {
+function renderTrack(track) {
   const list = document.getElementById('track');
   if (!list) return;
 
-  if (!track.length) return drop('.ledger');
+  if (!track.length) return drop('.t-track');
 
-  list.replaceChildren(...track.map((item, i) => {
+  list.replaceChildren(...track.map(item => {
     const li = document.createElement('li');
-    /* Учебная работа весит меньше коммерческой — это видно кеглем */
-    li.className = item.kind === 'Учебный проект' ? 'entry entry--minor' : 'entry';
-    li.append(
-      span('entry-idx', String(i + 1).padStart(2, '0')),
-      clientCell(item),
-      span('entry-period', item.period),
-      span('entry-note', item.note),
-    );
+    /* Учебная работа весит меньше коммерческой — это видно цветом */
+    li.className = item.kind === 'Учебный проект' ? 'tr tr--minor' : 'tr';
+
+    const what = document.createElement('div');
+    what.className = 'tr-what';
+    what.append(span('tr-role', item.role), span('tr-client', item.client));
+
+    li.append(span('tr-dot', ''), what, span('tr-period', item.period));
     return li;
   }));
 
-  const count = document.getElementById('ledgerCount');
-  if (count) count.textContent = track.length + ' ' + plural(track.length, ['место', 'места', 'мест']);
+  markCut(list);
+  /* Плитка меняет высоту вместе с шириной окна, поэтому обрезано
+     или нет — величина не постоянная. Наблюдатель дешевле, чем
+     обработчик resize: он молчит, пока размер не поменялся. */
+  new ResizeObserver(() => markCut(list)).observe(list);
 }
 
-function clientCell({ client, role, kind }) {
-  const wrap = document.createElement('span');
-  wrap.className = 'entry-client';
-  wrap.append(span('entry-role', role + ' · ' + kind), document.createTextNode(client));
-  return wrap;
+/* Растворять низ списка можно, только если под краем правда
+   что-то есть */
+function markCut(list) {
+  list.classList.toggle('is-cut', list.scrollHeight > list.clientHeight + 1);
 }
 
 /* ── Инструменты ───────────────────────────────────────── */
 
-function renderTools(tools) {
-  const arena = document.getElementById('kitArena');
-  const legend = document.getElementById('kitLegend');
-  if (!arena || !legend) return;
+function renderKit(tools) {
+  const list = document.getElementById('kitLegend');
+  if (!list) return;
 
-  if (!tools.length) return drop('.tools');
+  if (!tools.length) return drop('.t-kit');
 
-  arena.replaceChildren(...tools.map(tool => {
-    const chip = document.createElement('span');
-    chip.className = 'chip';
+  list.replaceChildren(...tools.map(tool => {
+    const li = document.createElement('li');
 
     const img = document.createElement('img');
     img.src = tool.logo;
     img.alt = '';
-    img.width = 32;
-    img.height = 32;
+    img.width = 26;
+    img.height = 26;
+    img.loading = 'lazy';
 
-    chip.append(img);
-    return chip;
-  }));
+    const text = document.createElement('div');
+    text.append(span('kit-name', tool.name), span('kit-for', tool.for));
 
-  legend.replaceChildren(...tools.map(tool => {
-    const li = document.createElement('li');
-    li.append(span('kit-name', tool.name), span('kit-for', tool.for));
+    li.append(img, text);
     return li;
   }));
 }
@@ -213,12 +212,4 @@ function span(className, text) {
   el.className = className;
   el.textContent = text;
   return el;
-}
-
-function plural(n, [one, few, many]) {
-  const tail = n % 10;
-  if (n > 4 && n < 21) return many;
-  if (tail === 1) return one;
-  if (tail > 1 && tail < 5) return few;
-  return many;
 }

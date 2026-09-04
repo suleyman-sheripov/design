@@ -23,7 +23,6 @@
 <link rel="stylesheet" href="css/cursor.css">
 <link rel="stylesheet" href="css/hero.css">
 <link rel="stylesheet" href="css/work.css">
-<link rel="stylesheet" href="css/tools.css">
 <link rel="stylesheet" href="css/contact.css">
 
 <noscript><style>
@@ -36,7 +35,7 @@
     font-family: var(--font-display); font-weight: 600; font-size: 1.05rem;
   }
   .reveal { opacity: 1; transform: none; }
-  .rail, .kit, .ledger-list, .work-status { display: none; }
+  .rail, .track, .kit-list, .work-status { display: none; }
   .fallback { display: block; }
 </style></noscript>
 </head>
@@ -62,7 +61,6 @@
 
       <nav class="masthead-nav reveal" aria-label="Разделы страницы">
         <a href="#work">Работы</a>
-        <a href="#experience">Опыт</a>
         <a href="#contact">Связаться</a>
       </nav>
 
@@ -73,24 +71,50 @@
 <main>
   <section class="hero">
     <div class="shell">
-      <div class="bento">
+      <!-- Представление в одну фразу: знак работает буквой внутри
+           строки, поэтому лицо не нужно, а имя всё равно звучит. -->
+      <h1 class="lede reveal">
+        Привет, я <span class="avatar" aria-hidden="true"><svg viewBox="0 0 483 300" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M40 0H120.6C120.6 0 80.6 43.4 80.6 77.2C80.6 111.1 120.9 120.6 120.6 154.5C120.3 187.7 80.6 230 80.6 230H226.2V0H301.8V154.2H407.4V0H483V300H407.4V230H301.8V300H0V230C0 196.7 39.7 187.7 40 154.5C40.3 120.6 0 111.1 0 77.2C0 43.4 40 0 40 0Z"/></svg></span> Сулейман,
+        <span class="lede-dim">графический и</span> UI/UX дизайнер
+        <span class="lede-dim">из Минска.</span> <span class="open"><span class="status-dot"></span>Открыт для проектов</span>
+      </h1>
 
-        <article class="tile tile--moss tile--notch t-card reveal">
-          <!-- Ярлык — обычный элемент ряда: его ширина и есть ширина
-               выреза, заливка добирает остаток. Разойтись нечему. -->
+      <div class="hero-act reveal">
+        <a class="cta" href="#contact" data-symbiote data-cursor="link" data-cursor-label="К контактам">
+          <span class="cta-text">Обсудить задачу</span>
+        </a>
+        <p class="hero-lead">
+          <b>Больше года на коммерческом фрилансе.</b> Веду проект целиком:
+          от концепции и презентации решения до макета в печать или
+          передачи разработчику.
+        </p>
+      </div>
+
+      <div class="deck">
+
+        <!-- Ярлык — обычный элемент ряда: его ширина и есть ширина
+             выреза, заливка добирает остаток. Разойтись нечему. -->
+        <article class="tile tile--notch t-track reveal" id="experience">
           <div class="notch-row">
-            <span class="tile-label">Обо мне</span>
+            <h2 class="tile-label">Мой опыт</h2>
             <span class="notch-fill" aria-hidden="true"></span>
           </div>
 
           <div class="tile-body">
-          <div class="card-top">
-            <!-- Место под фотографию: пока в плашке живёт знак.
-                 Появится снимок — сюда <img class="avatar-photo"> -->
-            <span class="avatar avatar--card" aria-hidden="true">
-              <svg viewBox="0 0 483 300" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M40 0H120.6C120.6 0 80.6 43.4 80.6 77.2C80.6 111.1 120.9 120.6 120.6 154.5C120.3 187.7 80.6 230 80.6 230H226.2V0H301.8V154.2H407.4V0H483V300H407.4V230H301.8V300H0V230C0 196.7 39.7 187.7 40 154.5C40.3 120.6 0 111.1 0 77.2C0 43.4 40 0 40 0Z"/></svg>
-            </span>
+            <!-- Список прокручивается: мест больше, чем помещается,
+                 и верхний край растворяется, чтобы это было видно.
+                 tabindex — чтобы прокрутить можно было и с клавиатуры. -->
+            <ol class="track" id="track" tabindex="0" aria-label="Места работы"></ol>
+          </div>
+        </article>
 
+        <article class="tile tile--moss tile--notch t-kit reveal">
+          <div class="notch-row">
+            <h2 class="tile-label">Чем работаю</h2>
+            <span class="notch-fill" aria-hidden="true"></span>
+          </div>
+
+          <div class="tile-body">
             <svg class="stamp" id="stamp" viewBox="0 0 100 100" aria-hidden="true">
               <defs>
                 <path id="stampRing" d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0"/>
@@ -100,34 +124,9 @@
               </g>
               <circle cx="50" cy="50" r="4.5" fill="currentColor" opacity="0.85"/>
             </svg>
-          </div>
 
-          <div>
-            <p class="card-role-big">Графический<br>и UI/UX<br>дизайнер</p>
-            <p class="card-who">Сулейман Шерипов</p>
+            <ul class="kit-list" id="kitLegend"></ul>
           </div>
-
-          <div class="card-foot">
-            <a href="mailto:suleyman.sheripov@icloud.com" data-bind="email" data-bind-href="mailto:"
-               data-cursor="link" data-cursor-label="Написать">suleyman.sheripov@icloud.com</a>
-          </div>
-          </div>
-        </article>
-
-        <article class="tile t-say reveal">
-          <h1 class="statement">
-            Делаю то, что увидит <span class="thin">ваш клиент</span>
-          </h1>
-          <p class="hero-lead">
-            <b>Больше года на коммерческом фрилансе.</b> Веду проект целиком:
-            от концепции и презентации решения до макета в печать или
-            передачи разработчику.
-          </p>
-          <a class="cta" href="#contact" data-symbiote data-cursor="link" data-cursor-label="К контактам">
-            <span class="cta-text">Обсудить задачу</span>
-          </a>
-
-          <p class="cta-status"><span class="status-dot"></span>Открыт для проектов</p>
         </article>
 
       </div>
@@ -177,38 +176,10 @@
     </div>
   </section>
 
-  <section class="ledger" id="experience" aria-labelledby="expTitle">
-    <div class="shell">
-      <div class="sec-head reveal">
-        <span class="sec-index">02</span>
-        <h2 id="expTitle">Где работал</h2>
-        <span class="sec-count" id="ledgerCount"></span>
-      </div>
-      <ol class="ledger-list reveal" id="track"></ol>
-    </div>
-  </section>
-
-  <section class="tools" id="tools" aria-labelledby="toolsTitle">
-    <div class="shell">
-      <div class="sec-head reveal">
-        <span class="sec-index">03</span>
-        <h2 id="toolsTitle">Чем делаю</h2>
-      </div>
-
-      <div class="kit reveal">
-        <!-- Короб с фишками — способ показать список, а не сам список:
-             содержимое дублируется текстом ниже -->
-        <div class="kit-arena" id="kitArena" aria-hidden="true"></div>
-        <ul class="kit-legend" id="kitLegend"></ul>
-        <button class="kit-again" id="kitAgain" type="button" hidden>Высыпать заново</button>
-      </div>
-    </div>
-  </section>
-
   <section class="contact" id="contact" aria-labelledby="contactTitle">
     <div class="shell">
       <div class="sec-head reveal">
-        <span class="sec-index">04</span>
+        <span class="sec-index">02</span>
         <h2 id="contactTitle">Связаться</h2>
         <p class="sec-lead">
           Напишите, что за задача и к какому сроку. Посмотрю и честно скажу,

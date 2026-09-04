@@ -23,7 +23,7 @@ const GAP_MARK_DOT = 0.20;
 const GAP_DOT_TEXT = 0.16;
 
 /* Шарик и точка тоже доли высоты прописных */
-const BALL_RATIO = 0.78;
+const BALL_RATIO = 0.64;
 const DOT_RATIO = 0.30;
 
 

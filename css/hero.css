@@ -253,64 +253,31 @@
   border-right: none; border-top: none;
 }
 
-/* ── Сетка первого экрана ──────────────────────────────── */
-
-.bento {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: clamp(0.7rem, 1.3vw, 1.1rem);
-  align-items: stretch;
-}
-
-.t-card { grid-column: span 4; }
-.t-say  { grid-column: span 8; }
-
-@media (max-width: 900px) {
-  .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .t-card, .t-say { grid-column: span 4; }
-}
+/* ── Первый экран ──────────────────────────────────────────
+   Сверху фраза во всю ширину, под ней действие, и только потом
+   плитки. Порядок продиктован тем, в каком порядке это читают:
+   кто я, что можно сделать, чем это подкреплено. */
 
 .hero {
   padding-block: clamp(1.5rem, 3vw, 2.5rem) clamp(2rem, 5vw, 3.5rem);
 }
 
-/* ── Визитка ───────────────────────────────────────────── */
-
-.card-top {
-  margin-bottom: auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gap-s);
+/* Ряд плиток: опыт вдвое весомее набора инструментов, поэтому
+   и шире. Одинаковыми они были бы просто двумя карточками. */
+.deck {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(0.7rem, 1.3vw, 1.1rem);
+  align-items: stretch;
+  margin-top: clamp(2rem, 4.5vw, 3.25rem);
 }
 
-.card-mark { width: clamp(54px, 6.5vw, 78px); height: auto; color: var(--moss-on); }
+.t-track { grid-column: span 7; }
+.t-kit   { grid-column: span 5; }
 
-.card-name {
-  font-family: var(--font-display);
-  font-weight: var(--w-display);
-  font-size: clamp(1.4rem, 2.4vw, 1.95rem);
-  line-height: 1.02;
-  letter-spacing: -0.035em;
-  margin: 0;
-}
-
-.card-role { font-size: var(--t-sm); opacity: 0.74; margin: 0.35rem 0 0; }
-
-.card-foot {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-top: var(--gap-m);
-  border-top: 1px solid color-mix(in srgb, var(--moss-on) 24%, transparent);
-  font-size: var(--t-sm);
-}
-
-.card-foot a { color: inherit; text-decoration: none; opacity: 0.85; }
-
-@media (hover: hover) {
-  .card-foot a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 860px) {
+  .deck { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .t-track, .t-kit { grid-column: span 4; }
 }
 
 /* Круглая печать: медленно доворачивается от прокрутки */
@@ -332,36 +299,56 @@
   .stamp-ring { animation: none; }
 }
 
-/* ── Высказывание ──────────────────────────────────────── */
+/* ── Представление ─────────────────────────────────────────
+   Одна фраза, набранная так, что взгляд сам выхватывает главное:
+   специальность держит полный чернильный тон, служебные слова
+   уходят в приглушённый. Это и есть иерархия внутри строки,
+   поэтому отдельного подзаголовка не требуется. */
 
-.statement {
-  font-size: clamp(1.5rem, 2.9vw, 2.6rem);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
+.lede {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(1.85rem, 5.4vw, 4.1rem);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
   margin: 0;
+  max-width: 18ch;
   text-wrap: balance;
 }
 
-.statement .thin { color: var(--ink-muted); }
+.lede-dim { color: var(--ink-muted); }
 
-.kicker-name {
-  display: flex;
+/* Метка состояния встаёт прямо в набор, как слово: висящая
+   отдельно плашка читалась бы наклейкой, а здесь это часть фразы */
+.open {
+  display: inline-flex;
   align-items: center;
-  gap: 0.1em;
-  flex-wrap: wrap;
-  font-family: var(--font-display);
-  font-weight: var(--w-display);
-  font-size: var(--t-sm);
-  letter-spacing: -0.02em;
-  margin: 0;
+  gap: 0.45em;
+  /* middle, а не сдвиг в em: длина в em считается от кегля самой
+     плашки, а не заголовка, и на любом другом размере экрана
+     плашка уезжала бы от строки */
+  vertical-align: middle;
+  margin-left: 0.2em;
+  padding: 0.42em 0.9em;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--t-xs);
+  letter-spacing: 0;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
-.kicker-name .where {
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: var(--t-xs);
-  color: var(--ink-muted);
-  margin-left: 0.5rem;
+/* Действие и пояснение на одной строке: кнопка ведёт, текст
+   отвечает на вопрос «а что дальше», не перебивая её */
+.hero-act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(1.1rem, 2.6vw, 2.25rem);
+  margin-top: clamp(1.5rem, 3vw, 2.25rem);
 }
 
 /* Аватар размером с букву: фото есть, но сайт не про лицо */
@@ -372,7 +359,9 @@
   width: 1.35em;
   height: 1.35em;
   border-radius: 0.28em;
-  margin-inline: 0.22em 0.28em;
+  /* Пробелы вокруг знака настоящие, а не отступы: иначе диктор
+     читает «яСулейман» одним словом */
+  margin-inline: 0;
   overflow: hidden;
   background: var(--moss);
   flex: none;
@@ -380,14 +369,7 @@
 
 .avatar svg { width: 60%; height: auto; color: var(--moss-on); }
 
-/* В визитке это уже не буква в строке, а плашка под фотографию */
-.avatar--card {
-  width: 3.4rem;
-  height: 3.4rem;
-  border-radius: 0.9rem;
-  background: var(--moss-deep);
-  margin: 0;
-}
+/* Появится снимок — он ляжет сюда вместо знака, размер не тронется */
 .avatar-photo { width: 100%; height: 100%; object-fit: cover; }
 
 .hero-lead {
@@ -398,37 +380,6 @@
 }
 
 .hero-lead b { color: var(--ink); font-weight: 500; }
-
-/* ── Услуги ────────────────────────────────────────────── */
-
-.services { list-style: none; margin: 0; padding: 0; }
-
-.services li {
-  display: grid;
-  grid-template-columns: 2.25rem minmax(0, 1fr);
-  align-items: baseline;
-  gap: 0.7rem;
-  padding-block: 0.7rem;
-  border-bottom: 1px solid var(--rule);
-}
-
-.services li:first-child { padding-top: 0; }
-.services li:last-child { border-bottom: none; padding-bottom: 0; }
-
-.services .idx {
-  font-size: var(--t-xs);
-  font-variant-numeric: tabular-nums;
-  color: var(--moss-deep);
-  letter-spacing: 0.06em;
-}
-
-.services .what {
-  font-family: var(--font-display);
-  font-weight: var(--w-display);
-  font-size: clamp(0.95rem, 1.4vw, 1.08rem);
-  letter-spacing: -0.025em;
-  line-height: 1.2;
-}
 
 /* ── Действие ──────────────────────────────────────────── */
 
@@ -488,86 +439,154 @@
   margin: 0.5rem 0 0;
 }
 
-/* ── Реестр как бенто ──────────────────────────────────── */
+/* ── Опыт: нить с точками ──────────────────────────────────
+   Мест больше, чем помещается в плитку, и это должно быть видно
+   без подписи «прокрутите». Список действительно прокручивается,
+   а нижний край растворяется маской: наполовину растаявшая
+   строка — честный намёк, что список продолжается вниз.
+   Маску вешает скрипт и только когда список правда не влез:
+   растворять последнюю строку, под которой ничего нет, значит
+   обещать продолжение, которого не существует.
+   Список тянется на всю высоту плитки, чтобы под ним не
+   оставалось пустого поля. */
 
-.ledger { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+.track {
+  --tr-dot: 9px;
+  --tr-gap: 0.95rem;
 
-.ledger-list {
+  flex: 1;
+  min-height: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.track.is-cut {
+  mask-image: linear-gradient(to top, transparent 0, #000 2.6rem);
+}
+
+.track::-webkit-scrollbar { width: 0; }
+
+.tr {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--tr-dot) minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--tr-gap);
+  padding-block: 0.7rem;
+}
+
+/* Нить идёт по центру колонки точек и обрывается на последней:
+   вести её в пустоту незачем, там больше ничего нет */
+.tr::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--tr-dot) / 2 - 0.5px);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--rule);
+}
+
+.tr:last-child::before { bottom: 50%; }
+
+.tr-dot {
+  position: relative;
+  z-index: 1;
+  width: var(--tr-dot);
+  height: var(--tr-dot);
+  border-radius: 50%;
+  background: var(--moss);
+  /* Обводка цветом плитки прорезает нить, иначе точка сидит на ней пятном */
+  box-shadow: 0 0 0 3px var(--tile-bg);
+  transform: translateY(0.35em);
+}
+
+.tr-role {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  font-size: clamp(0.95rem, 1.35vw, 1.08rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.tr-client {
+  display: block;
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  margin-top: 0.25rem;
+}
+
+.tr-period {
+  font-size: var(--t-xs);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Учебная работа стоит в том же ряду, но не спорит с оплаченной */
+.tr--minor .tr-dot { background: var(--rule); }
+.tr--minor .tr-role { color: var(--ink-muted); }
+
+/* Прокручиваемая область берёт фокус с клавиатуры, значит
+   должна его показывать */
+.track:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ── Инструменты в плитке ──────────────────────────────── */
+
+.t-kit .tile-body { gap: var(--gap-m); }
+
+.t-kit .stamp {
+  align-self: flex-end;
+  margin-bottom: auto;
+}
+
+.kit-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 265px), 1fr));
-  gap: clamp(0.7rem, 1.3vw, 1.1rem);
-}
-
-.entry {
-  position: relative;
-  border-radius: var(--radius);
-  padding: clamp(1.2rem, 2vw, 1.6rem);
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  transition:
-    transform var(--dur-tap) var(--ease-out),
-    border-color var(--dur-tap) var(--ease-out);
+  gap: 0.85rem;
 }
 
-/* Первая плитка шире остальных: вес задан значимостью работы,
-   а не одинаковым размером на всех */
-.entry:first-child { grid-column: span 2; }
-
-@media (max-width: 620px) {
-  .entry:first-child { grid-column: span 1; }
+.kit-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }
 
-@media (hover: hover) {
-  .entry:hover { transform: translateY(-3px); border-color: var(--moss); }
+.kit-list img {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 6px;
 }
 
-.entry-idx {
-  font-size: var(--t-xs);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-muted);
-  letter-spacing: 0.06em;
-}
-
-.entry-client {
+.kit-name {
+  display: block;
   font-family: var(--font-display);
   font-weight: var(--w-display);
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  font-size: 0.95rem;
+  letter-spacing: -0.025em;
 }
 
-.entry-role {
+/* 0.85, а не 0.72: на мху приглушённый кремовый на 13 кегле
+   давал 4.3:1 и не дотягивал до AA. Здесь 5.3:1. */
+.kit-for {
   display: block;
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: var(--t-label);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--moss-deep);
-  margin-bottom: 0.4rem;
-}
-
-.entry-period {
   font-size: var(--t-xs);
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+  margin-top: 0.1rem;
 }
-
-.entry-note {
-  font-size: var(--t-sm);
-  color: var(--ink-muted);
-  line-height: 1.5;
-  margin-top: auto;
-  padding-top: 0.5rem;
-}
-
-.entry--minor .entry-client { color: var(--ink-muted); }
 
 /* ── Появление ─────────────────────────────────────────── */
 
@@ -597,52 +616,6 @@
 
 /* В цветной плитке вырез повторяет цвет страницы, а подпись
    ярлыка перекрашивается: на охре серый текст пропадает */
-
-/* ── Визитка: роль крупно, имя следом ──────────────────── */
-
-.card-role-big {
-  font-family: var(--font-display);
-  font-weight: var(--w-display);
-  font-size: clamp(1.1rem, 1.95vw, 1.65rem);
-  line-height: 1.06;
-  letter-spacing: -0.035em;
-  margin: 0;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-
-.card-who {
-  font-size: var(--t-sm);
-  opacity: 0.78;
-  margin: 0.6rem 0 0;
-}
-
-/* ── Услуга как плитка ─────────────────────────────────── */
-
-.svc { justify-content: space-between; gap: var(--gap-l); }
-
-.svc-idx {
-  font-size: var(--t-xs);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.06em;
-  opacity: 0.6;
-}
-
-.svc-name {
-  font-family: var(--font-display);
-  font-weight: var(--w-display);
-  font-size: clamp(1.15rem, 2vw, 1.6rem);
-  letter-spacing: -0.03em;
-  line-height: 1.08;
-  margin: 0;
-}
-
-.svc-what {
-  font-size: var(--t-sm);
-  opacity: 0.78;
-  margin: 0.5rem 0 0;
-  max-width: 34ch;
-}
 
 /* ── Бегущая строка ────────────────────────────────────────
    Услуги перечислением: списком из трёх пунктов они выглядели
@@ -847,13 +820,10 @@ html.is-intro body { overflow: hidden; }
    вариант из шапки потерялся бы */
 .intro-scene.is-curtain .intro-mark svg { color: var(--ink); }
 
-/* Статус стоит сразу под призывом: он отвечает на вопрос, который
-   возникает ровно в момент, когда рука тянется к кнопке */
-.cta-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: -0.6rem 0 0;
-  font-size: var(--t-xs);
-  color: var(--ink-muted);
-}
+/* Ярлык плитки — заголовок раздела, а не подпись: сбрасываем
+   отступы, которые ему достались от h2 */
+.tile-label { margin: 0; font-family: var(--font-body); }
+
+/* Пояснение рядом с кнопкой держит свою меру, чтобы не
+   растягиваться на всю ширину экрана */
+.hero-act .hero-lead { max-width: 42ch; }
