@@ -820,6 +820,11 @@
   pointer-events: none;
 }
 
+/* Пока геометрия не окончательная, сцену не показываем: первый
+   кадр на подменном шрифте и был тем «шариком посередине» */
+.intro-scene.is-curtain { opacity: 0; }
+.intro-scene.is-curtain.is-ready { opacity: 1; }
+
 .intro-scene.is-curtain {
   position: fixed;
   left: 0;

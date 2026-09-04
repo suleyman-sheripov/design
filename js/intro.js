@@ -76,7 +76,15 @@ export function initIntro(root) {
   }
 
   sessionWrite(SESSION_KEY, '1');
-  return { done: run() };
+  /* Предел на всё интро. Застрять может что угодно — шрифт, кадр,
+     фоновая вкладка, — но занавес обязан уйти в любом случае. */
+  return { done: Promise.race([run(), pause(8000).then(rescue)]) };
+
+  function rescue() {
+    if (!curtain) return;
+    settle();
+    exitCurtain();
+  }
 
   /* ── Занавес ───────────────────────────────────────────────
      Интро идёт во весь экран по центру, а не в углу шапки:
@@ -86,15 +94,24 @@ export function initIntro(root) {
      собираться первый экран. */
 
   async function run() {
-    /* Занавес поднимаем сразу, а хореографию начинаем только когда
-       пришёл свой шрифт. Иначе пересчёт геометрии срабатывает прямо
-       посреди проката: left у шарика и половин переставляются, всё
-       телепортируется, и шарик перестаёт откуда-либо выкатываться. */
+    /* Порядок здесь и был причиной «шарик уже стоит посередине».
+       Между поднятием занавеса и приходом шрифта браузер успевает
+       нарисовать кадр. На подменном шрифте ширина замка другая,
+       значит другие и масштаб, и точка старта — а когда шрифт
+       приходит, всё пересчитывается, и шарик телепортируется.
+       Поэтому до готовности геометрии сцена не показывается вовсе. */
     enterCurtain();
 
-    if (document.fonts?.ready) await document.fonts.ready;
+    /* Застрявший шрифт не должен держать интро вечно */
+    if (document.fonts?.ready) await Promise.race([document.fonts.ready, pause(1500)]);
     layout();
     placeCurtain();
+
+    /* Даём кадр на применение новой геометрии, и только потом
+       показываем сцену: иначе первый показ снова придётся на старую */
+    await frame();
+    scene.classList.add('is-ready');
+    await frame();
 
     await play();
     await flyHome();
@@ -160,7 +177,7 @@ export function initIntro(root) {
   }
 
   function exitCurtain() {
-    scene.classList.remove('is-curtain');
+    scene.classList.remove('is-curtain', 'is-ready');
     scene.getAnimations().forEach(a => a.cancel());
     document.documentElement.classList.remove('is-intro');
     curtain?.remove();
@@ -362,6 +379,20 @@ export function initIntro(root) {
 
     return Promise.all(anims.map(a => a.finished.catch(() => {})));
   }
+}
+
+function pause(ms) {
+  return new Promise(res => setTimeout(res, ms));
+}
+
+/* В фоновой вкладке и в скрытой панели requestAnimationFrame не
+   вызывается вовсе. Без страховки ожидание кадра подвешивает интро
+   навсегда, и человек возвращается к пустой странице под занавесом. */
+function frame() {
+  return new Promise(res => {
+    const bail = setTimeout(res, 120);
+    requestAnimationFrame(() => { clearTimeout(bail); res(); });
+  });
 }
 
 /* Метрики строки: высота прописных и положение базовой линии

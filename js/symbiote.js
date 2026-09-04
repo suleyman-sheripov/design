@@ -100,6 +100,10 @@ export function initSymbiote(root = document) {
     const d = Math.hypot(dx, dy);
     const near = Math.max(0, 1 - d / REACH);
 
+    /* Рука уже на кнопке: тянуться некуда, капля втягивается в тело.
+       Иначе она продолжала выцеливать центр и ёрзала под курсором. */
+    const onIt = px >= r.left && px <= r.right && py >= r.top && py <= r.bottom;
+
     if (near > 0 && headIsOut(u)) {
       /* Рука подошла, пока голова снаружи. Из показа ныряем резко,
          а если уже уходили — ещё быстрее: пружина не доигрывает
@@ -110,7 +114,13 @@ export function initSymbiote(root = document) {
       u.size.c = 34;
     }
 
-    if (near > 0 && u.mode !== 'dive') {
+    if (onIt) {
+      u.mode = 'rest';
+      u.pos.set(0, 0);
+      u.size.target = 0;
+      u.lean.set(0, 0);
+      u.eyeOpen = 0;
+    } else if (near > 0 && u.mode !== 'dive') {
       reachTo(u, r, dx, dy, d, near);
     } else if (u.mode === 'dive') {
       dive(u, dt);
@@ -186,7 +196,7 @@ export function initSymbiote(root = document) {
   function idleLife(u, dt, r) {
     u.wait -= dt;
 
-    if (u.mode === 'reach') { u.mode = 'idle'; u.wait = idleWait(); }
+    if (u.mode === 'reach' || u.mode === 'rest') { u.mode = 'idle'; u.wait = idleWait(); }
 
     const lift = -(r.height / 2 + DROP_R * 0.55);
 
