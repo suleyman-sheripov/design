@@ -304,104 +304,61 @@ export function initIntro(root) {
       return a;
     };
 
-    // 1. Шарик медленно выкатывается слева
+    /* Шарик сразу едет туда, где ему и место — в точку между
+       половинами. Никаких отскоков и дроби: движение одно, и оно
+       читается с первого раза. */
+    const home = dotCx - g.ballSize / 2;
+
+    // 1. Выкатывается слева и останавливается на своём месте
     run(ball, [
       { transform: roll(g.ballStart) },
-      { transform: roll(g.hitRest) },
-    ], { duration: 1250, easing: EASE_ROLL });
+      { transform: roll(home) },
+    ], { duration: 1200, easing: EASE_ROLL });
 
     /* Обе половины уже стоят на финальных left, поэтому дальняя
-       позиция задаётся смещением, а смыкание — возвратом в ноль.
-       Раньше знак уезжал вправо именно потому, что смещение шло
-       в обратную сторону. */
+       позиция задаётся смещением, а смыкание — возвратом в ноль. */
     const restOff = g.restFar - g.restX;   // ERIPOV ждёт справа
     const markOff = g.markFar;             // знак ждёт за левым краем
 
-    // 2. Перед ним встаёт вторая половина имени
+    // 2. Справа сверху падает вторая половина имени
     run(rest, [
-      { transform: 'translate(' + restOff.toFixed(1) + 'px, -180px)', opacity: 0, offset: 0 },
-      { transform: 'translate(' + restOff.toFixed(1) + 'px, -180px)', opacity: 1, offset: 0.05 },
+      { transform: 'translate(' + restOff.toFixed(1) + 'px, -220px)', opacity: 0, offset: 0 },
+      { transform: 'translate(' + restOff.toFixed(1) + 'px, -220px)', opacity: 1, offset: 0.05 },
       { transform: 'translate(' + restOff.toFixed(1) + 'px, 0)',      opacity: 1, offset: 1 },
-    ], { duration: 230, delay: 1020, easing: EASE_FALL });
+    ], { duration: 260, delay: 1340, easing: EASE_FALL });
 
-    // 3. Удар: шарик откатывается, ERIPOV вздрагивает
-    run(ball, [
-      { transform: roll(g.hitRest) },
-      { transform: roll(g.backOff) },
-    ], { duration: 340, delay: 1250, easing: EASE_OUT });
-
-    run(rest, [
-      { transform: 'translateX(' + restOff.toFixed(1) + 'px)' },
-      { transform: 'translateX(' + (restOff + 8).toFixed(1) + 'px)' },
-      { transform: 'translateX(' + restOff.toFixed(1) + 'px)' },
-    ], { duration: 240, delay: 1250, easing: EASE_OUT });
-
-    // 4. На обратном ходу перед ним встаёт первая половина — знак
+    // 3. Слева сверху падает первая половина — знак
     run(mark, [
-      { transform: 'translate(' + markOff.toFixed(1) + 'px, -180px)', opacity: 0, offset: 0 },
-      { transform: 'translate(' + markOff.toFixed(1) + 'px, -180px)', opacity: 1, offset: 0.05 },
+      { transform: 'translate(' + markOff.toFixed(1) + 'px, -220px)', opacity: 0, offset: 0 },
+      { transform: 'translate(' + markOff.toFixed(1) + 'px, -220px)', opacity: 1, offset: 0.05 },
       { transform: 'translate(' + markOff.toFixed(1) + 'px, 0)',      opacity: 1, offset: 1 },
-    ], { duration: 230, delay: 1400, easing: EASE_FALL });
+    ], { duration: 260, delay: 1660, easing: EASE_FALL });
 
-    // 5. Шарик докатывается до знака
-    run(ball, [
-      { transform: roll(g.backOff) },
-      { transform: roll(g.hitMark) },
-    ], { duration: 360, delay: 1600, easing: EASE_ROLL });
-
-    /* 5б. И тут же отскакивает — так же, как от правой половины.
-       Раньше отскока не было: шарик подъезжал к знаку на замедляющей
-       кривой и замирал, а отбрасывало его только дробью через 120 мс.
-       Торможение у самой цели и читалось как притяжение. */
-    const kickBack = g.hitMark + 72;
-    run(ball, [
-      { transform: roll(g.hitMark) },
-      { transform: roll(kickBack) },
-    ], { duration: 230, delay: 1960, easing: EASE_OUT });
-
-    run(mark, [
-      { transform: 'translateX(' + markOff.toFixed(1) + 'px)' },
-      { transform: 'translateX(' + (markOff - 7).toFixed(1) + 'px)' },
-      { transform: 'translateX(' + markOff.toFixed(1) + 'px)' },
-    ], { duration: 240, delay: 1960, easing: EASE_OUT });
-
-    // 6. Половины смыкаются — возвращаются из дальних точек в ноль
+    // 4. Половины смыкаются вокруг шарика
     run(mark, [
       { transform: 'translateX(' + markOff.toFixed(1) + 'px)' },
       { transform: 'translateX(0)' },
-    ], { duration: 560, delay: 2190, easing: EASE_OUT });
+    ], { duration: 620, delay: 2020, easing: EASE_OUT });
 
     run(rest, [
       { transform: 'translateX(' + restOff.toFixed(1) + 'px)' },
       { transform: 'translateX(0)' },
-    ], { duration: 560, delay: 2190, easing: EASE_OUT });
+    ], { duration: 620, delay: 2020, easing: EASE_OUT });
 
-    // 7. Шарик частит между сходящимися стенками. Амплитуды затухают,
-    //    поэтому удары слышны как «тык-тык-тык», а не как качание.
-    /* Первый удар вправо: шарик только что отскочил от левой стенки,
-       значит дальше он летит к правой. Раньше дробь начиналась влево
-       и спорила с направлением отскока. */
-    const knocks = [0.9, -0.72, 0.55, -0.4, 0.28, -0.18, 0.1, -0.05, 0];
+    /* 5. Шарик медленно оседает в точку. Медленно — потому что это
+       последнее движение сцены: на нём глаз и останавливается. */
     run(ball, [
-      { transform: roll(kickBack), offset: 0 },
-      ...knocks.map((k, i) => ({
-        transform: roll(dotCx - g.ballSize / 2 + k * 62),
-        offset: (i + 1) / (knocks.length + 1),
-      })),
-      { transform: roll(dotCx - g.ballSize / 2), offset: 1 },
-    ], { duration: 700, delay: 2230 });
-
-    // 8. Шарик встаёт на своё место — он и есть точка
-    run(ball, [
-      { transform: roll(dotCx - g.ballSize / 2) + ' translateY(0) scale(1)' },
+      { transform: roll(home) + ' translateY(0) scale(1)' },
       {
         transform: 'translateX(' + (dotCx - ballCx).toFixed(1) + 'px) translateY(' +
           (dotCy - ballCy).toFixed(1) + 'px) scale(' + (g.dotSize / g.ballSize).toFixed(3) + ')',
       },
-    ], { duration: 260, delay: 2930, easing: EASE_OUT });
+    ], { duration: 620, delay: 2720, easing: EASE_OUT });
 
-    run(ball, [{ opacity: 1 }, { opacity: 0 }], { duration: 1, delay: 3186 });
-    run(dot, [{ opacity: 0 }, { opacity: 1 }], { duration: 1, delay: 3186 });
+    /* Подмена шарика на точку в самом конце: они одного размера
+       и цвета, шва не видно */
+    run(ball, [{ opacity: 1 }, { opacity: 0 }], { duration: 1, delay: 3340 });
+    run(dot, [{ opacity: 0 }, { opacity: 1 }], { duration: 1, delay: 3340 });
 
     return Promise.all(anims.map(a => a.finished.catch(() => {})));
   }

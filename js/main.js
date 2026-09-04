@@ -166,7 +166,8 @@ function revealAll() {
 
   const io = new IntersectionObserver((entries, self) => {
     entries.filter(e => e.isIntersecting).forEach((e, i) => {
-      setTimeout(() => e.target.classList.add('is-in'), i * 60);
+      aimFrom(e.target);
+      setTimeout(() => e.target.classList.add('is-in'), i * 70);
       self.unobserve(e.target);
     });
   }, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
@@ -182,6 +183,23 @@ function revealAll() {
       if (el.getBoundingClientRect().top < innerHeight) el.classList.add('is-in');
     }
   }, 4000);
+}
+
+/* Каждый блок приезжает со своей стороны: что слева от середины
+   экрана — слева, что справа — справа. Направление берётся из
+   фактического положения, поэтому его не нужно прописывать руками
+   и оно не разъедется при смене вёрстки. */
+function aimFrom(el) {
+  const r = el.getBoundingClientRect();
+  if (!r.width) return;
+
+  const fromLeft = r.left + r.width / 2 < innerWidth / 2;
+  /* Широкий блок во всю ширину ехать вбок не должен: у него нет
+     своей стороны, он приходит снизу */
+  const wide = r.width > innerWidth * 0.7;
+
+  el.style.setProperty('--from-x', wide ? '0px' : (fromLeft ? '-38px' : '38px'));
+  el.style.setProperty('--from-y', wide ? '26px' : '14px');
 }
 
 /* ── Мелочи ────────────────────────────────────────────── */

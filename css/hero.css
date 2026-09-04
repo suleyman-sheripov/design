@@ -571,14 +571,20 @@
 
 /* ── Появление ─────────────────────────────────────────── */
 
-.reveal { opacity: 0; transform: translateY(16px); }
+/* Блок приезжает со своей стороны. Направление ставит main.js
+   из фактического положения элемента. Плавно, без перелёта:
+   пружинистый доскок здесь спорил бы с ударами интро. */
+.reveal {
+  opacity: 0;
+  transform: translate3d(var(--from-x, 0), var(--from-y, 18px), 0);
+}
 
 .reveal.is-in {
   opacity: 1;
   transform: none;
   transition:
-    opacity var(--dur-enter) var(--ease-out),
-    transform var(--dur-enter) var(--ease-out);
+    opacity 560ms var(--ease-out),
+    transform 720ms var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
