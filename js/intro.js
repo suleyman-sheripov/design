@@ -26,8 +26,6 @@ const GAP_DOT_TEXT = 0.16;
 const BALL_RATIO = 0.78;
 const DOT_RATIO = 0.30;
 
-/* Старт за левым краем сцены: .intro обрезает всё, что левее нуля */
-const BALL_START = -90;
 
 /* Насколько далеко половины стоят до смыкания */
 const FAR_RIGHT = 175;
@@ -49,13 +47,15 @@ export function initIntro(root) {
   const rest = root.querySelector('#introRest');
   const markSvg = mark.querySelector('svg');
 
+  let curtain = null;
+
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const seen = sessionRead(SESSION_KEY);
 
   /* Считается в layout(), используется в play() */
   const g = {
     ballSize: 33, dotSize: 13, lockupW: 450, ballTop: 60,
-    markW: 68, dotX: 90, restX: 130, shiftY: 0,
+    markW: 68, dotX: 90, restX: 130, shiftY: 0, ballStart: -90,
     markFar: -96, restFar: 305,
     hitRest: 240, backOff: 195, hitMark: 60,
   };
@@ -72,7 +72,89 @@ export function initIntro(root) {
   }
 
   sessionWrite(SESSION_KEY, '1');
-  return { done: play() };
+  return { done: run() };
+
+  /* ── Занавес ───────────────────────────────────────────────
+     Интро идёт во весь экран по центру, а не в углу шапки:
+     в коробке шириной 290 px это читалось как виджет, а не как
+     титры. Когда замок собран, он уезжает и уменьшается на своё
+     место в шапке, занавес гаснет, и только тогда начинает
+     собираться первый экран. */
+
+  async function run() {
+    enterCurtain();
+    await play();
+    await flyHome();
+    exitCurtain();
+  }
+
+  function enterCurtain() {
+    curtain = document.createElement('div');
+    curtain.className = 'curtain';
+    curtain.setAttribute('aria-hidden', 'true');
+    document.body.append(curtain);
+    document.documentElement.classList.add('is-intro');
+
+    scene.classList.add('is-curtain');
+    placeCurtain();
+  }
+
+  /* Считается отдельно от fit(): пока идёт занавес, сцена живёт в
+     координатах окна, а не шапки. Пересчёт после загрузки шрифта
+     раньше затирал эту трансформу домашней, и замок улетал в угол
+     со scale(1). */
+  function placeCurtain() {
+    /* Масштаб от ширины окна, но не больше, чем влезает по высоте:
+       на низком окне замок иначе упрётся в края */
+    const byWidth = (innerWidth * 0.62) / g.lockupW;
+    const capH = parseFloat(markSvg.style.height) || 42;
+    const byHeight = (innerHeight * 0.3) / capH;
+    const K = Math.max(1, Math.min(byWidth, byHeight, 3));
+
+    const L = innerWidth / 2 - (g.lockupW / 2) * K;
+    const T = innerHeight / 2 - (SCENE_H / 2) * K;
+
+    /* Шарик должен заезжать из-за края экрана, а не появляться
+       в кадре: старт считается от того, где этот край оказался */
+    g.ballStart = -(L / K) - 110;
+    place(ball, g.ballStart, g.ballTop);
+
+    scene.style.transform = 'translate(' + L.toFixed(1) + 'px, ' + T.toFixed(1) + 'px) scale(' + K.toFixed(4) + ')';
+  }
+
+  /* Замок уезжает на своё место в шапке. Летит трансформой, а не
+     сменой положения: layout в каждом кадре здесь не нужен.
+     Домашнюю точку меряем сейчас, а не на входе: к этому моменту
+     шрифт уже пришёл и коробка шапки встала окончательно. */
+  function flyHome() {
+    const box = scene.parentElement.getBoundingClientRect();
+    const s = Math.min(1, (scene.parentElement.clientWidth || g.lockupW) / g.lockupW);
+
+    const from = scene.style.transform;
+    const to = 'translate(' + box.left.toFixed(1) + 'px, ' + box.top.toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
+
+    const fly = scene.animate(
+      [{ transform: from }, { transform: to }],
+      { duration: 820, delay: 320, easing: EASE_OUT, fill: 'both' },
+    );
+
+    curtain.animate(
+      [{ opacity: 1 }, { opacity: 0 }],
+      { duration: 460, delay: 560, easing: 'linear', fill: 'both' },
+    );
+
+    return fly.finished.catch(() => {});
+  }
+
+  function exitCurtain() {
+    scene.classList.remove('is-curtain');
+    scene.getAnimations().forEach(a => a.cancel());
+    document.documentElement.classList.remove('is-intro');
+    curtain?.remove();
+    curtain = null;
+    g.ballStart = -90;
+    fit();
+  }
 
   /* ── Геометрия ─────────────────────────────────────────── */
 
@@ -106,7 +188,7 @@ export function initIntro(root) {
 
     /* Шарик едет по середине прописных */
     g.ballTop = baseline - capH / 2 - g.ballSize / 2;
-    place(ball, BALL_START, g.ballTop);
+    place(ball, g.ballStart, g.ballTop);
 
     /* До смыкания половины стоят врозь. У знака отрицательная
        координата — он ждёт за левым краем и выходит оттуда. */
@@ -123,6 +205,8 @@ export function initIntro(root) {
   /* Масштабируем по ширине собранного замка, а не всей сцены:
      хвост сцены — разгон для шарика, он всегда за краем. */
   function fit() {
+    if (curtain) return placeCurtain();
+
     const room = scene.parentElement.clientWidth || g.lockupW;
     const s = Math.min(1, room / g.lockupW);
 
@@ -155,12 +239,12 @@ export function initIntro(root) {
     /* Шарик двигается трансформой от точки старта, поэтому все
        позиции переводятся в смещение. Угол берётся из пройденного
        пути и длины окружности — он катится, а не скользит. */
-    const at = x => x - BALL_START;
+    const at = x => x - g.ballStart;
     const roll = x =>
       'translateX(' + at(x).toFixed(1) + 'px) rotate(' +
       ((at(x) / (Math.PI * g.ballSize)) * 360).toFixed(1) + 'deg)';
 
-    const ballCx = BALL_START + g.ballSize / 2;
+    const ballCx = g.ballStart + g.ballSize / 2;
     const ballCy = g.ballTop + g.ballSize / 2;
     const dotCx = g.dotX + g.dotSize / 2;
     const dotCy = parseFloat(dot.style.top) + g.dotSize / 2;
@@ -174,7 +258,7 @@ export function initIntro(root) {
 
     // 1. Шарик медленно выкатывается слева
     run(ball, [
-      { transform: roll(BALL_START) },
+      { transform: roll(g.ballStart) },
       { transform: roll(g.hitRest) },
     ], { duration: 1250, easing: EASE_ROLL });
 

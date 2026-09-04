@@ -806,3 +806,32 @@
 }
 
 .card-status .status-dot { background: var(--moss-on); }
+
+/* ── Занавес интро ─────────────────────────────────────────
+   Интро идёт во весь экран: в коробке шапки оно читалось как
+   виджет в углу, а не как титры. Занавес закрывает страницу,
+   пока замок собирается, и гаснет, когда тот уезжает на место. */
+
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--paper);
+  pointer-events: none;
+}
+
+.intro-scene.is-curtain {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 81;
+  transform-origin: 0 0;
+}
+
+/* Пока идёт интро, страница под занавесом не должна прокручиваться */
+html.is-intro,
+html.is-intro body { overflow: hidden; }
+
+/* Во весь экран знак набирается чернилами: на бумаге мховый
+   вариант из шапки потерялся бы */
+.intro-scene.is-curtain .intro-mark svg { color: var(--ink); }
