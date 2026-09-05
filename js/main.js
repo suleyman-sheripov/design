@@ -144,7 +144,6 @@ function renderKit(tools) {
     img.alt = '';
     img.width = 26;
     img.height = 26;
-    img.loading = 'lazy';
 
     const text = document.createElement('div');
     text.append(span('kit-name', tool.name), span('kit-for', tool.for));

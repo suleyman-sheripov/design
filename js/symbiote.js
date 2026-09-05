@@ -65,6 +65,10 @@ export function initSymbiote(root = document) {
     const text = el.querySelector('.cta-text');
     if (!text) return null;
 
+    /* Слой построен — теперь заливку можно снять с самой кнопки
+       и отдать телу под фильтром */
+    el.classList.add('has-goo');
+
     const unit = {
       el, text, eyes,
       drop: goo.querySelector('.cta-drop'),

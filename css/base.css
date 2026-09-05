@@ -17,6 +17,28 @@ body {
 img, svg, video { display: block; max-width: 100%; }
 img { height: auto; }
 
+/* ── Поверхности браузера ──────────────────────────────────
+   Выделение, полосы прокрутки и подчёркивания браузер рисует
+   своими цветами, и на тёплой бумаге системная синева выдаёт,
+   что страницу не доделали. Здесь они берут краски отсюда. */
+
+::selection {
+  background: var(--moss);
+  color: var(--moss-on);
+}
+
+:root {
+  scrollbar-color: var(--rule) var(--paper);
+}
+
+/* Подчёркивание — тонкая линейка на расстоянии от строки, а не
+   штрих впритык, как ставит браузер по умолчанию */
+a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
 h1, h2, h3 {
   font-family: var(--font-display);
   font-weight: var(--w-display);
@@ -27,7 +49,6 @@ h1, h2, h3 {
 }
 
 p { margin: 0; }
-a { color: inherit; }
 
 button {
   font: inherit;
@@ -37,8 +58,11 @@ button {
   cursor: pointer;
 }
 
+/* Обводка фокуса берёт отдельную краску, а не мох напрямую:
+   на тёмной зоне мох давал 2.7:1 и терялся в фоне. Там же
+   переменная подменяется светлым вариантом. */
 :focus-visible {
-  outline: 2px solid var(--moss);
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
   border-radius: 6px;
 }
@@ -138,6 +162,8 @@ button {
   /* Тёмный мох по ночи не виден вовсе: номера разделов и подписи
      ролей берут светлый вариант того же цвета */
   --moss-deep: #8CA889;
+  /* 7.2:1 к ночи против 2.7:1 у основного мха */
+  --focus: #8CA889;
   --rule: #33301F;
   --paper-raised: var(--night-raised);
 }
