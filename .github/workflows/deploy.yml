@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+# Сборка нужна, потому что Pages отдаёт готовые файлы, а не исходники.
+# Ветка react оставлена в триггерах намеренно: пока переезд не влит,
+# по ней можно посмотреть результат на живом домене. После слияния
+# в main эту строку стоит убрать.
+on:
+  push:
+    branches: [main, react]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Параллельные деплои отменяют друг друга: в очереди держим только
+# последний, но начатый не рвём, чтобы Pages не остался в полусостоянии
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        working-directory: app
+        run: npm ci
+
+      - name: Build
+        working-directory: app
+        # Подпуть берётся из имени репозитория, а не зашит строкой:
+        # переименуют репозиторий — сборка поедет за ним сама.
+        # Косые черты навешивает vite.config, здесь голое имя.
+        run: SITE_BASE="${GITHUB_REPOSITORY#*/}" npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
