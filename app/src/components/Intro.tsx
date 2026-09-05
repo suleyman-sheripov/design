@@ -1,6 +1,6 @@
 import { motion, useMotionValue, useTransform } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { INTRO_END, frameAt } from '../lib/introSim'
+import { INTRO_END, frameAt, setStart } from '../lib/introSim'
 import * as sound from '../lib/sound'
 import { CAP_TOP, Lockup, em, type LockupMotions } from './Lockup'
 
@@ -29,6 +29,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
   /* Шрифт обязан приехать до старта: половины встают по его метрикам */
   const [ready, setReady] = useState(false)
   const done = useRef(false)
+  const stageRef = useRef<HTMLSpanElement>(null)
 
   const markX = useMotionValue(0)
   const markY = useMotionValue(0)
@@ -75,6 +76,17 @@ export function Intro({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     if (!ready) return
+
+    /* Шар обязан выкатиться из-за края экрана, а не появиться в
+       кадре. Замок стоит по центру, поэтому расстояние до края
+       окна меряется, а не задаётся числом. */
+    const box = stageRef.current?.getBoundingClientRect()
+    if (box) setStart(box.left, parseFloat(getComputedStyle(stageRef.current!).fontSize))
+
+    /* Контекст звука готовим сейчас, в паузе перед выкатом: его
+       создание синхронное и роняет кадр, а в паузе ничего не
+       движется */
+    sound.prime()
 
     /* Отсчёт начинается с ПЕРВОГО выданного кадра, а не с запуска
        эффекта. Между ними успевает пройти вёрстка и первая отрисовка,
@@ -181,6 +193,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
           коробкой замка, иначе шарик отсчитывается от строчного
           бокса, который выше на полуинтерлиньяж */}
       <span
+        ref={stageRef}
         className="relative inline-flex leading-none text-[clamp(1.5rem,6.8vw,4.6rem)]"
         style={{ opacity: ready ? 1 : 0 }}
       >

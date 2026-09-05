@@ -24,6 +24,16 @@
   --color-amber: #9a5a1a;
   --color-amber-on: #fbf7ef;
 
+  /* Глина и небо. Взяты со снимка владельца: черепица минских крыш
+     и небо над ними. Палитра не выдумана, она с той же фотографии,
+     что стоит в заголовке, поэтому краски держатся вместе.
+
+     У каждой краски своя работа, иначе четыре акцента превращаются
+     в пестроту: мох — действие, охра — специальность, глина —
+     печатное, небо — цифровое. 5.2:1 и 5.5:1 к бумаге. */
+  --color-clay: #9e4429;
+  --color-sky: #2f6182;
+
   /* Тёмная зона кейсов */
   --color-night: #14120c;
   --color-night-raised: #1e1b14;
@@ -55,17 +65,6 @@
   --ease-fall: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   --ease-roll: cubic-bezier(0.15, 0.62, 0.36, 1);
 
-  /* Лента едет ровно и бесконечно: два одинаковых прохода, сдвиг
-     на половину — шва не видно */
-  --animate-ticker: ticker 34s linear infinite;
-  @keyframes ticker {
-    from {
-      transform: translate3d(0, 0, 0);
-    }
-    to {
-      transform: translate3d(-50%, 0, 0);
-    }
-  }
 }
 
 @layer base {
@@ -144,95 +143,6 @@
   }
 }
 
-/* Формы, которые в утилитах читались бы хуже, чем в обычном CSS:
-   вырез под ярлык и его вогнутый стык. Всё остальное собирается
-   утилитами прямо в разметке. */
-@layer components {
-  .tile {
-    --notch-h: 1.8rem;
-    --pad-x: clamp(1.05rem, 1.8vw, 1.5rem);
-    --pad-y: clamp(0.7rem, 1.2vw, 1rem);
-    --tile-bg: var(--color-paper-raised);
-    --tile-fg: var(--color-ink);
-    --fillet: 11px;
-
-    color: var(--tile-fg);
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .tile[data-fill="moss"] {
-    --tile-bg: var(--color-moss);
-    --tile-fg: var(--color-moss-on);
-  }
-
-  /* Ширину выреза задаёт сам ярлык: он обычный элемент потока, а
-     заливка занимает остаток. Синхронизировать нечего, поэтому
-     подпись физически не может вылезти за вырез. */
-  .notch-row {
-    display: flex;
-    align-items: stretch;
-    min-height: var(--notch-h);
-  }
-
-  .notch-label {
-    position: relative;
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    height: var(--notch-h);
-    margin: 0;
-    padding-inline: 0.1rem 1.05rem;
-    font-family: var(--font-body);
-    font-size: var(--text-label);
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-ink);
-    white-space: nowrap;
-  }
-
-  /* Вогнутый стык. Уступ под прямым углом читался как сбой
-     отрисовки, поэтому внутренний угол скругляется навстречу
-     плитке: квадрат цвета плитки, из которого радиальным
-     градиентом вырезана четверть круга. Сидит на самом ярлыке,
-     привязан к его правому краю, а не к числу. */
-  .notch-label::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: var(--fillet);
-    height: var(--fillet);
-    background: radial-gradient(
-      circle at 0 0,
-      transparent var(--fillet),
-      var(--tile-bg) var(--fillet)
-    );
-    pointer-events: none;
-  }
-
-  .notch-fill {
-    flex: 1;
-    min-width: var(--radius-tile);
-    background: var(--tile-bg);
-    border-top-right-radius: var(--radius-tile);
-  }
-
-  /* Верх-право у тела квадратный: там заливка продолжается сверху */
-  .tile-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    min-width: 0;
-    background: var(--tile-bg);
-    border-radius: var(--radius-tile) 0 var(--radius-tile) var(--radius-tile);
-    padding: var(--pad-y) var(--pad-x) var(--pad-x);
-  }
-}
-
 @layer utilities {
   /* Видно скринридеру, не видно глазу */
   .sr-only {
@@ -257,5 +167,18 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Курсор печати. Мигает только пока идёт набор: оставленный после
+   него, он заставляет ждать продолжения, которого не будет. */
+@keyframes caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
   }
 }

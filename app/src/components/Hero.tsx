@@ -1,28 +1,42 @@
 import { motion } from 'motion/react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Typed } from './Typed'
 
 const photo = `${import.meta.env.BASE_URL}assets/photo.webp`
 const photo2x = `${import.meta.env.BASE_URL}assets/photo@2x.webp`
 
 /* Первый экран.
 
-   Одна фраза, метка состояния, пояснение и действие. Больше на нём
-   ничего нет: блок стоит слева чуть ниже середины окна, а остальное
-   поле остаётся пустым. Пустота здесь работает — она и делает
-   первый экран спокойным.
+   Одна фраза и одно действие. Больше на нём ничего нет: блок стоит
+   слева чуть ниже середины окна, справа печать. Пустота здесь
+   работает — она и делает первый экран спокойным.
 
-   Иерархия задана внутри набора: специальность держит охру,
-   служебные слова уходят в приглушённый. Начертание облегчено до
-   обычного: полужирный на этом кегле давил. */
-export function Lede() {
+   Имя набирается на глазах и спотыкается на одной букве. Это
+   единственное место, где страница ведёт себя как человек за
+   клавиатурой, и оно же объясняет, почему заголовок появляется не
+   сразу целиком. */
+
+/* Сперва с ошибкой, потом исправление. Стираем ровно до неё, а не
+   всё слово: так это и читается опечаткой, а не переделкой. */
+const NAME_SCRIPT = [
+  { type: 'write', text: 'Сулецман' },
+  { type: 'wait', ms: 420 },
+  { type: 'erase', count: 4 },
+  { type: 'wait', ms: 160 },
+  { type: 'write', text: 'йман,' },
+] as const
+
+export function Lede({ start }: { start: boolean }) {
+  const [named, setNamed] = useState(false)
+
   return (
-    <h1 className="m-0 max-w-[24ch] font-display text-[clamp(1.1rem,2.1vw,1.55rem)] leading-[1.35] font-normal tracking-[-0.02em] text-balance">
+    <h1 className="m-0 max-w-[22ch] font-display text-[clamp(1.35rem,2.6vw,1.9rem)] leading-[1.34] font-normal tracking-[-0.02em] text-balance">
       Привет, я{' '}
-      {/* Снимок вместо знака: он же и есть цвет на этом экране, и он
-          же Минск, который тут назван словами. Лицо сидит выше
-          середины кадра, поэтому в маленьком квадрате кадрируем по
-          нему, а не по центру. */}
-      <span className="inline-flex size-[1.35em] overflow-hidden rounded-[0.26em] bg-moss align-middle">
+      {/* Снимок вместо знака: он же и есть цвет на этом экране.
+          Выровнен по базовой линии, а не по середине строки: низ
+          кадра садится туда же, куда садятся буквы, и картинка
+          перестаёт проваливаться из ряда. */}
+      <span className="inline-flex size-[1.35em] translate-y-[0.14em] overflow-hidden rounded-[0.26em] bg-moss align-baseline">
         <img
           src={photo}
           srcSet={`${photo} 1x, ${photo2x} 2x`}
@@ -32,74 +46,49 @@ export function Lede() {
           className="size-full object-cover object-[50%_36%]"
         />
       </span>{' '}
-      Сулейман, <span className="text-ink-muted">графический и</span>{' '}
-      <span className="text-amber">UI/UX дизайнер</span>{' '}
-      <span className="text-ink-muted">из Минска.</span>
+      <Typed script={NAME_SCRIPT as unknown as never} start={start} onDone={() => setNamed(true)} />
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: named ? 1 : 0 }}
+        transition={{ duration: 0.5, delay: 0.12 }}
+      >
+        {' '}
+        <span className="text-ink-muted">графический</span>{' '}
+        <span className="text-clay">и</span>{' '}
+        <span className="text-sky">UI</span>
+        <span className="text-ink-muted">/</span>
+        <span className="text-amber">UX</span> дизайнер.
+      </motion.span>
     </h1>
   )
 }
 
-/* Метка состояния. Раз в двенадцать секунд напоминает о себе одним
-   вдохом: точка разгорается, плашка чуть расширяется и возвращается.
-   Реже — и её не заметят, чаще — начнёт мешать читать. */
-export function OpenBadge() {
-  return (
-    <motion.p
-      className="mt-6 inline-flex items-center gap-2 rounded-full border border-rule bg-paper-raised px-3 py-1.5 text-xs font-medium text-ink"
-      animate={{ scale: [1, 1.045, 1] }}
-      transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity, repeatDelay: 11 }}
-    >
-      <motion.span
-        className="size-1.5 rounded-full bg-moss"
-        animate={{ opacity: [1, 0.35, 1], scale: [1, 1.7, 1] }}
-        transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity, repeatDelay: 11 }}
-      />
-      Открыт для проектов
-    </motion.p>
-  )
-}
-
-/* Пояснение стоит своей колонкой в меру, а не во всю ширину: длинная
-   строка на таком кегле не читается. */
-export function HeroLead() {
-  return (
-    <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-ink-muted">
-      <b className="font-medium text-moss-deep">Больше года на коммерческом фрилансе.</b>{' '}
-      Веду проект целиком: от концепции и презентации решения до макета в печать или
-      передачи разработчику.
-    </p>
-  )
-}
-
 export function HeroAct({ children }: { children: ReactNode }) {
-  return <div className="mt-7">{children}</div>
+  return <div className="mt-8">{children}</div>
 }
 
-/* Чем занимаюсь — строкой хештегов, а не отдельной плиткой. Плитка
-   с логотипами программ говорила о том, в чём я работаю, а клиенту
-   важно, что он получит. */
-const TAGS = [
-  'фирменныйстиль',
-  'упаковкаподпечать',
-  'логотипы',
-  'сайтыиинтерфейсы',
-  'uiкиты',
-  'карточкидлямаркетплейсов',
-  'афишиинаружка',
-]
-
-export function Tags() {
+/* Печать. Справа первый экран оставался пустым, и в него просится не
+   текст, а знак ремесла: круглая печать с перечнем того, что владелец
+   делает. Она из его же предметной области, она несёт краску и она
+   единственное, что на этом экране всё время движется. */
+export function Stamp() {
   return (
-    <ul className="mt-10 flex max-w-[68ch] list-none flex-wrap gap-x-5 gap-y-2 p-0 text-xs text-ink-muted">
-      {TAGS.map((tag, i) => (
-        <li key={tag}>
-          {/* Решётки идут через одну мхом и охрой: строка мелкая, и
-              это единственный способ дать ей цвет, не крася сам
-              текст и не теряя его читаемость */}
-          <span className={i % 2 ? 'text-amber' : 'text-moss'}>#</span>
-          {tag}
-        </li>
-      ))}
-    </ul>
+    <svg
+      viewBox="0 0 100 100"
+      aria-hidden="true"
+      className="w-[clamp(120px,17vw,220px)] text-moss"
+    >
+      <defs>
+        <path id="heroStamp" d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0" />
+      </defs>
+      <g className="origin-center animate-[spin_46s_linear_infinite] motion-reduce:animate-none">
+        <text className="text-[7.4px] font-semibold tracking-[0.1em] fill-current opacity-80">
+          <textPath href="#heroStamp" startOffset="0">
+            ФИРМЕННЫЙ СТИЛЬ · УПАКОВКА · ИНТЕРФЕЙСЫ ·{' '}
+          </textPath>
+        </text>
+      </g>
+      <circle cx="50" cy="50" r="4" className="fill-clay" />
+    </svg>
   )
 }

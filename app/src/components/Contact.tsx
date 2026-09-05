@@ -29,7 +29,7 @@ export function Contact({ profile }: { profile: Profile | null }) {
       className="py-[clamp(2.5rem,6vw,4.5rem)]"
     >
       <div className="mx-auto w-full max-w-[var(--shell)] px-[var(--gutter)]">
-        <SecHead index="02" title="Связаться">
+        <SecHead index="04" title="Связаться">
           Напишите, что за задача и к какому сроку. Посмотрю и честно скажу, берусь или
           нет.
         </SecHead>

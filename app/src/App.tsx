@@ -3,13 +3,13 @@ import { loadProfile, loadProjects, type Profile, type Project } from './data'
 import { Colophon, Contact } from './components/Contact'
 import { Cta } from './components/Cta'
 import { Cursor } from './components/Cursor'
-import { HeroAct, HeroLead, Lede, OpenBadge, Tags } from './components/Hero'
+import { Experience } from './components/Experience'
+import { HeroAct, Lede, Stamp } from './components/Hero'
 import { CURTAIN_FADE_MS, Curtain, Intro } from './components/Intro'
 import { Lockup } from './components/Lockup'
-import { InView, Piece, Stagger } from './components/Reveal'
+import { Piece, Stagger } from './components/Reveal'
+import { Skills } from './components/Skills'
 import { GooDefs } from './components/Symbiote'
-import { Tile } from './components/Tile'
-import { Track } from './components/Track'
 import { CaseSheet, Work } from './components/Work'
 
 const shell = 'mx-auto w-full max-w-[var(--shell)] px-[var(--gutter)]'
@@ -92,42 +92,43 @@ export default function App() {
       <main>
         {/* Первый экран во всю высоту и почти пустой. Блок стоит
             слева и чуть ниже середины: ровно по центру он выглядел
-            вывеской, а не началом разговора. */}
+            вывеской, а не началом разговора. Печать держит правую
+            половину, чтобы пустота читалась замыслом, а не недоделкой. */}
         <section className="flex min-h-[100svh] items-center pb-[8vh]">
-          <Stagger show={stage === 'live'} className={`${shell} mt-[7vh]`}>
-            <Piece>
-              <Lede />
-            </Piece>
-            <Piece>
-              <OpenBadge />
-            </Piece>
-            <Piece>
-              <HeroLead />
-            </Piece>
-            <Piece>
-              <HeroAct>
-                <Cta href="#contact">Обсудить задачу</Cta>
-              </HeroAct>
-            </Piece>
-            <Piece>
-              <Tags />
-            </Piece>
-          </Stagger>
+          <div className={`${shell} mt-[7vh] flex items-end justify-between gap-8`}>
+            <Stagger show={stage === 'live'}>
+              <Piece>
+                <Lede start={stage === 'live'} />
+              </Piece>
+              <Piece>
+                <HeroAct>
+                  <Cta href="#contact">Обсудить задачу</Cta>
+                </HeroAct>
+              </Piece>
+            </Stagger>
+
+            <div
+              className={`hidden shrink-0 transition-opacity duration-700 md:block ${
+                stage === 'live' ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <Stamp />
+            </div>
+          </div>
         </section>
 
-        <section className="pb-[clamp(2.5rem,6vw,4.5rem)]">
-          <InView className={shell}>
-            <Tile id="experience" label="Мой опыт" className="max-w-[46rem]">
-              {profile ? (
-                <Track track={profile.track} />
-              ) : (
-                <Placeholder failed={failed} what="опыт" />
-              )}
-            </Tile>
-          </InView>
-        </section>
+        {profile ? (
+          <Experience track={profile.track} />
+        ) : (
+          <section className="py-16">
+            <div className={shell}>
+              <Placeholder failed={failed} what="опыт" />
+            </div>
+          </section>
+        )}
 
         <Work projects={projects} failed={failed} onOpen={setOpenCase} />
+        <Skills />
         <Contact profile={profile} />
       </main>
 

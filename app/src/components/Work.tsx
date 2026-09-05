@@ -83,7 +83,7 @@ export function Work({
     >
       <div className="mx-auto w-full max-w-[var(--shell)] px-[var(--gutter)]">
         <SecHead
-          index="01"
+          index="02"
           title="Работы"
           count={projects ? `${projects.length} ${plural(projects.length)}` : undefined}
         />
