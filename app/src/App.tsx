@@ -3,14 +3,12 @@ import { loadProfile, loadProjects, type Profile, type Project } from './data'
 import { Colophon, Contact } from './components/Contact'
 import { Cta } from './components/Cta'
 import { Cursor } from './components/Cursor'
-import { HeroAct, Lede } from './components/Hero'
+import { HeroAct, HeroLead, Lede, OpenBadge, Tags } from './components/Hero'
 import { CURTAIN_FADE_MS, Curtain, Intro } from './components/Intro'
-import { Kit } from './components/Kit'
 import { Lockup } from './components/Lockup'
-import { Piece, Stagger } from './components/Reveal'
+import { InView, Piece, Stagger } from './components/Reveal'
 import { GooDefs } from './components/Symbiote'
 import { Tile } from './components/Tile'
-import { Ticker } from './components/Ticker'
 import { Track } from './components/Track'
 import { CaseSheet, Work } from './components/Work'
 
@@ -92,46 +90,41 @@ export default function App() {
       </header>
 
       <main>
-        <section className="pt-[clamp(1.5rem,3vw,2.5rem)] pb-[clamp(2rem,5vw,3.5rem)]">
-          <Stagger show={stage === 'live'} className={shell}>
+        {/* Первый экран во всю высоту и почти пустой. Блок стоит
+            слева и чуть ниже середины: ровно по центру он выглядел
+            вывеской, а не началом разговора. */}
+        <section className="flex min-h-[100svh] items-center pb-[8vh]">
+          <Stagger show={stage === 'live'} className={`${shell} mt-[7vh]`}>
             <Piece>
               <Lede />
             </Piece>
-
+            <Piece>
+              <OpenBadge />
+            </Piece>
+            <Piece>
+              <HeroLead />
+            </Piece>
             <Piece>
               <HeroAct>
                 <Cta href="#contact">Обсудить задачу</Cta>
               </HeroAct>
             </Piece>
-
-            {/* Опыт вдвое весомее набора инструментов, поэтому и шире.
-                Одинаковыми они были бы просто двумя карточками. */}
-            <div className="mt-[clamp(1.5rem,3.2vw,2.25rem)] grid grid-cols-4 items-stretch gap-[clamp(0.7rem,1.3vw,1.1rem)] md:grid-cols-12">
-              <Piece className="col-span-4 flex md:col-span-7">
-                <Tile id="experience" label="Мой опыт" className="w-full">
-                  {profile ? (
-                    <Track track={profile.track} />
-                  ) : (
-                    <Placeholder failed={failed} what="опыт" />
-                  )}
-                </Tile>
-              </Piece>
-
-              <Piece className="col-span-4 flex md:col-span-5">
-                <Tile label="Чем работаю" fill="moss" className="w-full">
-                  {profile ? (
-                    <Kit tools={profile.tools} />
-                  ) : (
-                    <Placeholder failed={failed} what="инструменты" />
-                  )}
-                </Tile>
-              </Piece>
-            </div>
-
             <Piece>
-              <Ticker />
+              <Tags />
             </Piece>
           </Stagger>
+        </section>
+
+        <section className="pb-[clamp(2.5rem,6vw,4.5rem)]">
+          <InView className={shell}>
+            <Tile id="experience" label="Мой опыт" className="max-w-[46rem]">
+              {profile ? (
+                <Track track={profile.track} />
+              ) : (
+                <Placeholder failed={failed} what="опыт" />
+              )}
+            </Tile>
+          </InView>
         </section>
 
         <Work projects={projects} failed={failed} onOpen={setOpenCase} />

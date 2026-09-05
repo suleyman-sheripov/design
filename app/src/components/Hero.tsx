@@ -1,48 +1,105 @@
-import { Mark } from './Mark'
+import { motion } from 'motion/react'
+import type { ReactNode } from 'react'
 
-/* Представление в одну фразу. Знак работает буквой внутри строки,
-   поэтому лицо не нужно, а имя всё равно звучит. Иерархия задана
-   внутри набора: специальность держит охру, служебные слова уходят
-   в приглушённый, остальное — чернила. Отдельного подзаголовка при
-   таком наборе не требуется. */
+const photo = `${import.meta.env.BASE_URL}assets/photo.webp`
+const photo2x = `${import.meta.env.BASE_URL}assets/photo@2x.webp`
+
+/* Первый экран.
+
+   Одна фраза, метка состояния, пояснение и действие. Больше на нём
+   ничего нет: блок стоит слева чуть ниже середины окна, а остальное
+   поле остаётся пустым. Пустота здесь работает — она и делает
+   первый экран спокойным.
+
+   Иерархия задана внутри набора: специальность держит охру,
+   служебные слова уходят в приглушённый. Начертание облегчено до
+   обычного: полужирный на этом кегле давил. */
 export function Lede() {
   return (
-    /* Мельче замка в шапке намеренно: логотип держит верх страницы,
-       а фраза под ним читается, а не спорит с ним размером */
-    <h1 className="m-0 max-w-[21ch] font-display text-[clamp(1.2rem,2.5vw,1.85rem)] leading-[1.12] font-semibold tracking-[-0.035em] text-balance">
+    <h1 className="m-0 max-w-[24ch] font-display text-[clamp(1.1rem,2.1vw,1.55rem)] leading-[1.35] font-normal tracking-[-0.02em] text-balance">
       Привет, я{' '}
-      <span
-        aria-hidden="true"
-        className="inline-flex size-[1.35em] items-center justify-center overflow-hidden rounded-[0.28em] bg-moss align-middle"
-      >
-        <Mark className="w-[60%] text-moss-on" />
+      {/* Снимок вместо знака: он же и есть цвет на этом экране, и он
+          же Минск, который тут назван словами. Лицо сидит выше
+          середины кадра, поэтому в маленьком квадрате кадрируем по
+          нему, а не по центру. */}
+      <span className="inline-flex size-[1.35em] overflow-hidden rounded-[0.26em] bg-moss align-middle">
+        <img
+          src={photo}
+          srcSet={`${photo} 1x, ${photo2x} 2x`}
+          alt="Сулейман Шерипов"
+          width={320}
+          height={320}
+          className="size-full object-cover object-[50%_36%]"
+        />
       </span>{' '}
       Сулейман, <span className="text-ink-muted">графический и</span>{' '}
       <span className="text-amber">UI/UX дизайнер</span>{' '}
-      <span className="text-ink-muted">из Минска.</span>{' '}
-      {/* Метка состояния встаёт прямо в набор, как слово: висящая
-          отдельно плашка читалась бы наклейкой */}
-      <span className="inline-flex items-center gap-[0.45em] rounded-full border border-rule bg-paper-raised px-[0.8em] py-[0.4em] align-middle font-body text-xs font-medium tracking-normal text-ink whitespace-nowrap">
-        <span className="size-[0.5em] rounded-full bg-moss" />
-        Открыт для проектов
-      </span>
+      <span className="text-ink-muted">из Минска.</span>
     </h1>
   )
 }
 
-/* Действие и пояснение на одной строке: кнопка ведёт, текст
-   отвечает на вопрос «а что дальше», не перебивая её. */
-export function HeroAct({ children }: { children: React.ReactNode }) {
+/* Метка состояния. Раз в двенадцать секунд напоминает о себе одним
+   вдохом: точка разгорается, плашка чуть расширяется и возвращается.
+   Реже — и её не заметят, чаще — начнёт мешать читать. */
+export function OpenBadge() {
   return (
-    <div className="mt-[clamp(1.5rem,3vw,2.25rem)] flex flex-wrap items-center gap-[clamp(1.1rem,2.6vw,2.25rem)]">
-      {children}
-      <p className="max-w-[42ch] text-sm text-ink-muted">
-        {/* Мох на главном утверждении: точка цвета в текстовой
-            колонке, где иначе одни чернила */}
-        <b className="font-medium text-moss-deep">Больше года на коммерческом фрилансе.</b>{' '}
-        Веду проект целиком: от концепции и презентации решения до макета в печать или
-        передачи разработчику.
-      </p>
-    </div>
+    <motion.p
+      className="mt-6 inline-flex items-center gap-2 rounded-full border border-rule bg-paper-raised px-3 py-1.5 text-xs font-medium text-ink"
+      animate={{ scale: [1, 1.045, 1] }}
+      transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity, repeatDelay: 11 }}
+    >
+      <motion.span
+        className="size-1.5 rounded-full bg-moss"
+        animate={{ opacity: [1, 0.35, 1], scale: [1, 1.7, 1] }}
+        transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity, repeatDelay: 11 }}
+      />
+      Открыт для проектов
+    </motion.p>
+  )
+}
+
+/* Пояснение стоит своей колонкой в меру, а не во всю ширину: длинная
+   строка на таком кегле не читается. */
+export function HeroLead() {
+  return (
+    <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-ink-muted">
+      <b className="font-medium text-moss-deep">Больше года на коммерческом фрилансе.</b>{' '}
+      Веду проект целиком: от концепции и презентации решения до макета в печать или
+      передачи разработчику.
+    </p>
+  )
+}
+
+export function HeroAct({ children }: { children: ReactNode }) {
+  return <div className="mt-7">{children}</div>
+}
+
+/* Чем занимаюсь — строкой хештегов, а не отдельной плиткой. Плитка
+   с логотипами программ говорила о том, в чём я работаю, а клиенту
+   важно, что он получит. */
+const TAGS = [
+  'фирменныйстиль',
+  'упаковкаподпечать',
+  'логотипы',
+  'сайтыиинтерфейсы',
+  'uiкиты',
+  'карточкидлямаркетплейсов',
+  'афишиинаружка',
+]
+
+export function Tags() {
+  return (
+    <ul className="mt-10 flex max-w-[68ch] list-none flex-wrap gap-x-5 gap-y-2 p-0 text-xs text-ink-muted">
+      {TAGS.map((tag, i) => (
+        <li key={tag}>
+          {/* Решётки идут через одну мхом и охрой: строка мелкая, и
+              это единственный способ дать ей цвет, не крася сам
+              текст и не теряя его читаемость */}
+          <span className={i % 2 ? 'text-amber' : 'text-moss'}>#</span>
+          {tag}
+        </li>
+      ))}
+    </ul>
   )
 }

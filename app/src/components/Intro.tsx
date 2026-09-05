@@ -1,6 +1,7 @@
 import { motion, useMotionValue, useTransform } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { INTRO_END, frameAt } from '../lib/introSim'
+import * as sound from '../lib/sound'
 import { CAP_TOP, Lockup, em, type LockupMotions } from './Lockup'
 
 export { INTRO_END }
@@ -75,8 +76,19 @@ export function Intro({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (!ready) return
 
-    const start = performance.now()
+    /* Отсчёт начинается с ПЕРВОГО выданного кадра, а не с запуска
+       эффекта. Между ними успевает пройти вёрстка и первая отрисовка,
+       и этот кусок сцены просто пропадал: шар появлялся уже
+       на середине пути. */
+    let start = 0
     let frame = 0
+
+    /* Предыдущее состояние нужно, чтобы поймать сами события: удар,
+       касание строки, смыкание. По ним и идёт звук. */
+    let prevHits = 0
+    let restLanded = false
+    let markLanded = false
+    let settled = false
 
     /* Страховка на случай, когда кадры не выдаются вовсе: во вкладке
        в фоне rAF молчит, а интро обязано закончиться и там */
@@ -91,8 +103,28 @@ export function Intro({ onDone }: { onDone: () => void }) {
     )
 
     const tick = (now: number) => {
+      if (!start) start = now
       const t = (now - start) / 1000
       const s = frameAt(Math.min(t, INTRO_END))
+
+      /* Звук вешается на события, а не на моменты времени: так он не
+         разъедется с физикой, если её числа поменяются */
+      if (s.hits > prevHits) {
+        sound.tick(Math.min(1, (s.hits - prevHits) * 0.9))
+        prevHits = s.hits
+      }
+      if (!restLanded && s.restY === 0) {
+        restLanded = true
+        sound.thud()
+      }
+      if (!markLanded && s.markY === 0) {
+        markLanded = true
+        sound.thud()
+      }
+      if (!settled && s.dotVisible) {
+        settled = true
+        sound.settle()
+      }
 
       markX.set(s.markX)
       markY.set(s.markY)
@@ -154,27 +186,34 @@ export function Intro({ onDone }: { onDone: () => void }) {
       >
         <Lockup animated motions={motions} />
 
+        {/* Масштаб и вращение разнесены по двум слоям, и это здесь
+            главное. Уменьшение вниз требует точки отсчёта по низу, а
+            качение — по центру. На одном элементе побеждает одна:
+            шар начинал вращаться вокруг точки на своей нижней кромке
+            и мотался, вместо того чтобы катиться. */}
         <motion.span
           aria-hidden="true"
-          className="absolute rounded-full bg-moss"
+          className="absolute"
           style={{
             width: `${em.ball}em`,
             height: `${em.ball}em`,
             left: ballLeft,
             top: ballTop,
             scale: ballScale,
-            rotate: spin,
             opacity: ballOpacity,
-            /* Точка отсчёта по низу: шарик обязан уменьшаться вниз,
-               садясь на базовую линию, а не стягиваться к себе */
             transformOrigin: '50% 100%',
           }}
         >
-          {/* Блик: без него качение читается скольжением */}
-          <span
-            className="absolute top-1/2 left-1/2 rounded-full bg-moss-on opacity-50"
-            style={{ width: '22%', height: '22%', marginLeft: '2%', marginTop: '-11%' }}
-          />
+          <motion.span
+            className="relative block size-full rounded-full bg-moss"
+            style={{ rotate: spin }}
+          >
+            {/* Блик: без него качение читается скольжением */}
+            <span
+              className="absolute top-1/2 left-1/2 rounded-full bg-moss-on opacity-50"
+              style={{ width: '22%', height: '22%', marginLeft: '2%', marginTop: '-11%' }}
+            />
+          </motion.span>
         </motion.span>
       </span>
     </div>

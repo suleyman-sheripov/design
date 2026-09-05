@@ -20,8 +20,11 @@ export function Cta({ href, children }: { href: string; children: ReactNode }) {
       href={href}
       data-cursor="link"
       data-cursor-label="К контактам"
-      className={`relative isolate inline-flex shrink-0 items-center justify-center self-start rounded-full px-[1.45rem] py-[0.78rem] text-sm font-semibold text-paper no-underline ${
-        fine ? '' : 'bg-ink'
+      /* Мох вместо чернил: на почти пустом экране кнопка — самое
+         крупное пятно, и оно же теперь несёт основную краску.
+         6.6:1 кремового по мху, проходит AA. */
+      className={`relative isolate inline-flex shrink-0 items-center justify-center self-start rounded-full px-[1.45rem] py-[0.78rem] text-sm font-semibold text-moss-on no-underline ${
+        fine ? '' : 'bg-moss'
       }`}
     >
       {fine && <Symbiote target={ref} />}

@@ -44,13 +44,22 @@ const START_V = 8.2
 const FRICTION = 0.62
 const RESTITUTION = 0.66
 
+/* Пауза в начале: пустой бумажный экран, и только потом выкатывается
+   шар. Без неё сцена начиналась одновременно с появлением страницы и
+   первый кусок выката пропадал за первым кадром. */
+export const LEAD = 0.55
+
+/* Половины ждут выше экрана, а не в кадре. На -3.6em они висели в
+   поле зрения и было видно, как они возникают, а потом падают. */
+const DROP_FROM = -11
+
 export const T = {
-  restDrop: 0.95,
-  markDrop: 1.75,
-  drop: 0.3,
-  close: 2.4,
+  restDrop: LEAD + 0.95,
+  markDrop: LEAD + 1.75,
+  drop: 0.34,
+  close: LEAD + 2.4,
   closeDur: 1.25,
-  settle: 4,
+  settle: LEAD + 4,
   settleDur: 0.85,
 }
 
@@ -77,8 +86,8 @@ function drops(t: number) {
   const kRest = clamp01((t - T.restDrop) / T.drop)
   const kMark = clamp01((t - T.markDrop) / T.drop)
   return {
-    restY: -3.6 * (1 - easeIn(kRest)),
-    markY: -3.6 * (1 - easeIn(kMark)),
+    restY: DROP_FROM * (1 - easeIn(kRest)),
+    markY: DROP_FROM * (1 - easeIn(kMark)),
     restIn: t >= T.restDrop,
     markIn: t >= T.markDrop,
     /* Стенка появляется только когда половина коснулась строки:
@@ -112,13 +121,14 @@ export function frameAt(t: number): Frame {
   let spin = 0
   let hits = 0
 
-  /* Физика идёт до начала оседания. Дальше шарик уже никуда не
-     бьётся, он садится, и вести дробь под уменьшение незачем. */
+  /* Физика идёт от конца паузы и до начала оседания. Дальше шарик
+     уже никуда не бьётся, он садится, и вести дробь под уменьшение
+     незачем. */
   const tSim = Math.min(t, T.settle)
-  const steps = Math.max(0, Math.floor(tSim / DT))
+  const steps = Math.max(0, Math.floor((tSim - LEAD) / DT))
 
   for (let i = 0; i < steps; i++) {
-    const now = i * DT
+    const now = LEAD + i * DT
     const d = drops(now)
     const o = offsets(now)
 

@@ -190,9 +190,9 @@ export function Symbiote({ target }: { target: React.RefObject<HTMLElement | nul
   return (
     <>
       <span className="pointer-events-none absolute inset-0 z-0 [filter:url(#goo)]">
-        <span className="absolute inset-0 rounded-full bg-ink" />
+        <span className="absolute inset-0 rounded-full bg-moss" />
         <motion.span
-          className="absolute top-1/2 left-1/2 rounded-full bg-ink"
+          className="absolute top-1/2 left-1/2 rounded-full bg-moss"
           style={{
             x,
             y,
@@ -215,7 +215,7 @@ export function Symbiote({ target }: { target: React.RefObject<HTMLElement | nul
         {[0, 1].map((i) => (
           <span key={i} className="size-[7px] rounded-full bg-paper">
             <motion.span
-              className="block size-[3px] rounded-full bg-ink"
+              className="block size-[3px] rounded-full bg-moss-deep"
               style={{ x: pupilX, y: pupilY, marginLeft: 2, marginTop: 2 }}
             />
           </span>

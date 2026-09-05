@@ -1,26 +1,42 @@
 import { motion } from 'motion/react'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 /* Появление по частям. Первый экран собирается не разом, а один блок
    за другим: сперва садится замок в шапке, и только потом приходит
-   всё остальное. Разом всё это выглядело как подмена картинки. */
+   всё остальное. Разом это читалось подменой картинки.
+
+   У каждого появления есть страховка по таймеру. Причина та же, что
+   у занавеса: в фоновой вкладке кадры не выдаются, анимация не
+   стартует, и блок остаётся с нулевой прозрачностью навсегда. По
+   истечении срока обёртка снимает с себя анимацию совсем и отдаёт
+   содержимое обычной разметкой, которую браузер рисует без кадров. */
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
+const STEP = 0.11
+const DUR = 0.66
+
 const group = {
   hidden: {},
-  show: {
-    transition: { staggerChildren: 0.11, delayChildren: 0.08 },
-  },
+  show: { transition: { staggerChildren: STEP, delayChildren: 0.08 } },
 }
 
 const piece = {
   hidden: { opacity: 0, y: 16 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.66, ease: EASE },
-  },
+  show: { opacity: 1, y: 0, transition: { duration: DUR, ease: EASE } },
+}
+
+/* Сколько ждать, прежде чем считать, что кадров не будет */
+function useSafety(active: boolean, ms: number) {
+  const [expired, setExpired] = useState(false)
+
+  useEffect(() => {
+    if (!active) return
+    const id = setTimeout(() => setExpired(true), ms)
+    return () => clearTimeout(id)
+  }, [active, ms])
+
+  return expired
 }
 
 export function Stagger({
@@ -32,6 +48,11 @@ export function Stagger({
   className?: string
   children: ReactNode
 }) {
+  /* Запас на восемь блоков плюс само появление плюс секунда сверху */
+  const expired = useSafety(show, (8 * STEP + DUR) * 1000 + 1000)
+
+  if (expired) return <div className={className}>{children}</div>
+
   return (
     <motion.div
       className={className}
@@ -67,6 +88,12 @@ export function InView({
   className?: string
   children: ReactNode
 }) {
+  /* Здесь срок длиннее: до раздела ещё нужно доскроллить, и рано
+     снятая анимация просто лишила бы его появления */
+  const expired = useSafety(true, 12000)
+
+  if (expired) return <div className={className}>{children}</div>
+
   return (
     <motion.div
       className={className}
