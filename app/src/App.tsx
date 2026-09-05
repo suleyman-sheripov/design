@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+
+import { useCallback, useEffect, useState } from 'react'
 import { loadProfile, type Profile } from './data'
 import { Cta } from './components/Cta'
 import { HeroAct, Lede } from './components/Hero'
+import { CURTAIN_FADE_MS, Curtain, Intro } from './components/Intro'
 import { Kit } from './components/Kit'
+import { Lockup } from './components/Lockup'
 import { Tile } from './components/Tile'
 import { Ticker } from './components/Ticker'
 import { Track } from './components/Track'
@@ -13,15 +16,44 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [failed, setFailed] = useState(false)
 
+  /* Интро играет один раз за сессию: перезагрузка страницы в той же
+     вкладке не должна каждый раз задерживать на четыре секунды */
+  const [introDone, setIntroDone] = useState(
+    () =>
+      sessionStorage.getItem('intro-seen') === '1' ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+
   useEffect(() => {
     loadProfile().then(setProfile, () => setFailed(true))
   }, [])
 
+  /* Занавес переживает конец сцены на время затухания, поэтому у
+     него своё состояние, а не отрицание introDone */
+  const [curtain, setCurtain] = useState(() => !introDone)
+
+  const finishIntro = useCallback(() => {
+    sessionStorage.setItem('intro-seen', '1')
+    setIntroDone(true)
+    setTimeout(() => setCurtain(false), CURTAIN_FADE_MS + 200)
+  }, [])
+
   return (
     <>
+      {curtain && <Curtain leaving={introDone} />}
+      {!introDone && <Intro onDone={finishIntro} />}
+
       <header className="pt-[clamp(1.1rem,2.4vw,1.75rem)]">
         <div className={`${shell} flex flex-wrap items-center justify-between gap-4`}>
           <span className="sr-only">Сулейман Шерипов, графический и UI/UX дизайнер</span>
+          {/* Пока замок в занавесе, его место в шапке держит невидимая
+              копия: без неё шапка подпрыгнула бы в момент посадки */}
+          <Lockup
+            key={introDone ? 'home' : 'placeholder'}
+            animated={introDone}
+            className={`text-[clamp(1.05rem,2.4vw,1.5rem)] ${introDone ? '' : 'invisible'}`}
+            aria-hidden="true"
+          />
           <nav aria-label="Разделы страницы" className="ms-auto flex gap-6 text-sm">
             <a href="#work" className="text-ink-muted no-underline hover:text-ink">
               Работы
