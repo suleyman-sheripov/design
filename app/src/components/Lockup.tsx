@@ -1,28 +1,20 @@
-import { motion } from 'motion/react'
+import { motion, useTransform, type MotionValue } from 'motion/react'
 import { Mark } from './Mark'
 
 /* Замок «Ш.ERIPOV».
 
    Вся геометрия выражена в em от кегля строки, поэтому её считает
-   браузер. На ванильной версии те же величины выводились в рантайме
-   из метрик шрифта через canvas, и это стоило трёх багов подряд:
-   гонка с загрузкой шрифта переставляла знак посреди анимации,
-   пересчёт на resize затирал трансформу интро, а точка отсчёта
-   масштаба не совпадала с высотой коробки, и знак обрезался.
-
-   Считать было незачем: cap height у Unbounded 600 — величина
-   постоянная, 0.75em. Замерена один раз через TextMetrics
-   (actualBoundingBoxAscent для «H» при кегле 100 = 75). */
+   браузер. Cap height у Unbounded 600 — величина постоянная, 0.75em,
+   замерена один раз через TextMetrics (actualBoundingBoxAscent для
+   «H» при кегле 100 равен 75). */
 export const CAP = 0.75
 
-/* Доли высоты прописных, как в исходной раскладке */
 const MARK_ASPECT = 483 / 300
 const GAP_MARK_DOT = 0.2
 const GAP_DOT_TEXT = 0.16
 const DOT = 0.3
 export const BALL = 0.64
 
-/* Переведено в em строки: em = CAP * доля */
 export const em = {
   markW: CAP * MARK_ASPECT,
   markH: CAP,
@@ -40,33 +32,33 @@ export const em = {
    начинается на 3 px ниже коробки строки. */
 export const CAP_TOP = 0.125
 
-/* Шарик едет по середине прописных и садится в точку. Обе величины
-   отмеряются от знака: это единственный элемент, чья коробка равна
-   ровно высоте прописных, поэтому привязка к нему не врёт. */
-export const ballHome = {
-  top: CAP_TOP + (em.markH - em.ball) / 2,
-  left: em.markW + em.gapMarkDot + (em.dot - em.ball) / 2,
+/* Базовая линия от верха коробки */
+export const BASELINE = 0.875
+
+export type LockupMotions = {
+  markX: MotionValue<number>
+  markY: MotionValue<number>
+  restX: MotionValue<number>
+  restY: MotionValue<number>
+  dotOpacity: MotionValue<number>
 }
 
-/* Кадры для отдельных частей. Их задаёт интро и передаёт сюда, а не
-   импортирует замок из интро: иначе шапка зависела бы от занавеса,
-   который к моменту её показа уже снят. */
-type PartAnim = Record<string, unknown>
-
 type Props = {
-  /* Части замка анимируются интро по отдельности, поэтому им нужны
-     сквозные имена: по ним motion перевозит замок из занавеса
-     в шапку сам, без ручного пересчёта координат */
+  /* Перелёт из занавеса в шапку motion делает сам по layoutId */
   animated?: boolean
-  parts?: { mark: PartAnim; dot: PartAnim; rest: PartAnim }
+  /* Хореография интро. Живёт на ВЛОЖЕННОМ элементе, а не на том, что
+     несёт layoutId: motion забирает трансформу внешнего элемента под
+     свой перелёт и перебивает чужие x и y. Из-за этого половины на
+     прошлой версии не падали и не сходились, а просто возникали уже
+     собранными. */
+  motions?: LockupMotions
   className?: string
   'aria-hidden'?: boolean | 'true' | 'false'
 }
 
-export function Lockup({ animated = false, parts, className = '', ...rest }: Props) {
+export function Lockup({ animated = false, motions, className = '', ...rest }: Props) {
   const Part = animated ? motion.span : 'span'
-  const props = (name: string, anim?: PartAnim) =>
-    animated ? { layoutId: `lockup-${name}`, ...anim } : {}
+  const id = (name: string) => (animated ? { layoutId: `lockup-${name}` } : {})
 
   return (
     <span
@@ -76,26 +68,79 @@ export function Lockup({ animated = false, parts, className = '', ...rest }: Pro
       {/* inline-block: базовая линия у него — нижняя кромка, поэтому
           низ знака садится ровно на базовую линию строки */}
       <Part
-        {...props('mark', parts?.mark)}
+        {...id('mark')}
         className="relative inline-block shrink-0"
         style={{ width: `${em.markW}em`, height: `${em.markH}em` }}
       >
-        <Mark className="h-full w-full" />
+        <Choreo x={motions?.markX} y={motions?.markY} className="block h-full w-full">
+          <Mark className="h-full w-full" />
+        </Choreo>
       </Part>
 
       <Part
-        {...props('dot', parts?.dot)}
-        className="inline-block shrink-0 rounded-full bg-moss"
+        {...id('dot')}
+        className="inline-block shrink-0"
         style={{
           width: `${em.dot}em`,
           height: `${em.dot}em`,
           marginInline: `${em.gapMarkDot}em ${em.gapDotText}em`,
         }}
-      />
+      >
+        <motion.span
+          className="block size-full rounded-full bg-moss"
+          style={motions ? { opacity: motions.dotOpacity } : undefined}
+        />
+      </Part>
 
-      <Part {...props('rest', parts?.rest)} className="inline-block whitespace-nowrap">
-        ERIPOV
+      <Part {...id('rest')} className="inline-block whitespace-nowrap">
+        <Choreo x={motions?.restX} y={motions?.restY} className="inline-block">
+          ERIPOV
+        </Choreo>
       </Part>
     </span>
+  )
+}
+
+/* Сдвиг в em: величины приходят числами, здесь получают единицу.
+   Замок без хореографии рисуется другим компонентом, а не этим же с
+   пустыми значениями: так число вызовов хуков не зависит от входных
+   данных. */
+function Choreo({
+  x,
+  y,
+  className,
+  children,
+}: {
+  x?: MotionValue<number>
+  y?: MotionValue<number>
+  className?: string
+  children: React.ReactNode
+}) {
+  if (!x || !y) return <span className={className}>{children}</span>
+  return (
+    <Moving x={x} y={y} className={className}>
+      {children}
+    </Moving>
+  )
+}
+
+function Moving({
+  x,
+  y,
+  className,
+  children,
+}: {
+  x: MotionValue<number>
+  y: MotionValue<number>
+  className?: string
+  children: React.ReactNode
+}) {
+  const ex = useTransform(x, (v) => `${v}em`)
+  const ey = useTransform(y, (v) => `${v}em`)
+
+  return (
+    <motion.span className={className} style={{ x: ex, y: ey }}>
+      {children}
+    </motion.span>
   )
 }

@@ -1,55 +1,55 @@
-import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
-import { Lockup, ballHome, em } from './Lockup'
+import { motion, useMotionValue, useTransform } from 'motion/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { INTRO_END, frameAt } from '../lib/introSim'
+import { CAP_TOP, Lockup, em, type LockupMotions } from './Lockup'
+
+export { INTRO_END }
 
 /* Интро.
 
-   Шарик выкатывается слева и встаёт на своё место. Справа сверху
-   падает ERIPOV, слева сверху — знак. Половины смыкаются вокруг
-   шарика, и он медленно оседает в точку, которой всё это время и
-   был. Дальше замок улетает в шапку.
+   Шарик выкатывается слева. Сверху падает ERIPOV и встаёт у него на
+   пути — шарик ударяется и отлетает назад. На обратном ходу перед
+   ним падает знак, шарик ударяется и об него. Дальше половины
+   сходятся, шарик частит между ними затухающей дробью, пока места не
+   остаётся, и оседает в точку.
 
-   Хореография та же, что была одобрена на ванильной версии, но
-   выражена кадрами, а не цепочкой WAAPI. Цепочка требовала следить
-   за fill: forwards против both — при both анимация применяет свой
-   первый кадр ещё до старта и перебивает более раннюю, из-за чего
-   шарик стоял на финальном месте всю сцену. Здесь у каждой части
-   один список кадров, и перебивать нечему. */
+   Хореография не расписана кадрами, а считается: физика живёт в
+   lib/introSim и прогоняется от нуля с фиксированным шагом. Поэтому
+   её можно проверить прогоном, а не разглядыванием, и она не зависит
+   от частоты кадров экрана.
 
-/* Насколько далеко половины стоят до смыкания, в долях кегля */
-const FAR_LEFT = -2.6
-const FAR_RIGHT = 2.4
+   Кадры пишутся в motion values, а не в состояние React: иначе
+   компонент перерисовывался бы шестьдесят раз в секунду. */
 
-/* Откуда выкатывается шарик: заведомо за левым краем экрана */
-const BALL_START = -14
-
-const EASE_ROLL = [0.15, 0.62, 0.36, 1] as const
-const EASE_FALL = [0.55, 0.06, 0.68, 0.19] as const
-const EASE_OUT = [0.16, 1, 0.3, 1] as const
-
-const t = {
-  roll: 1.2,
-  fallAt: 1.34,
-  markAt: 1.66,
-  fall: 0.26,
-  closeAt: 2.02,
-  close: 0.62,
-  settleAt: 2.72,
-  settle: 0.62,
-}
-
-export const INTRO_MS = (t.settleAt + t.settle) * 1000
+/* Шарик едет по середине прописных */
+const BALL_TOP = CAP_TOP + (em.markH - em.ball) / 2
 
 export function Intro({ onDone }: { onDone: () => void }) {
-  /* Шрифт обязан приехать до старта: половины замка встают по его
-     метрикам, и подмена шрифта посреди сцены сдвинула бы их */
+  /* Шрифт обязан приехать до старта: половины встают по его метрикам */
   const [ready, setReady] = useState(false)
+  const done = useRef(false)
+
+  const markX = useMotionValue(0)
+  const markY = useMotionValue(0)
+  const restX = useMotionValue(0)
+  const restY = useMotionValue(0)
+  const dotOpacity = useMotionValue(0)
+
+  const ballX = useMotionValue(0)
+  const ballY = useMotionValue(0)
+  const ballScale = useMotionValue(1)
+  const ballSpin = useMotionValue(0)
+  const ballOpacity = useMotionValue(1)
+
+  const motions: LockupMotions = useMemo(
+    () => ({ markX, markY, restX, restY, dotOpacity }),
+    [markX, markY, restX, restY, dotOpacity],
+  )
 
   useEffect(() => {
     let alive = true
     /* Восемь секунд — заведомо больше сцены, но всё ещё предел:
-       застрявший шрифт не должен оставить посетителя перед пустым
-       занавесом навсегда */
+       застрявший шрифт не должен оставить перед пустым занавесом */
     const guard = setTimeout(() => alive && setReady(true), 8000)
 
     document.fonts.ready.then(() => {
@@ -62,12 +62,6 @@ export function Intro({ onDone }: { onDone: () => void }) {
     }
   }, [])
 
-  useEffect(() => {
-    if (!ready) return
-    const id = setTimeout(onDone, INTRO_MS)
-    return () => clearTimeout(id)
-  }, [ready, onDone])
-
   /* Пока идёт занавес, страница под ним не прокручивается */
   useEffect(() => {
     const html = document.documentElement
@@ -78,113 +72,127 @@ export function Intro({ onDone }: { onDone: () => void }) {
     }
   }, [])
 
-  /* Занавес и сцена разведены намеренно. Замок обязан исчезнуть из
-     занавеса ровно в тот кадр, когда появляется в шапке: пока обе
-     копии живы, у motion два элемента с одним layoutId и перелёт
-     не строится. Поэтому сцена снимается мгновенно, а фон гаснет
-     отдельно, уже за ней. */
+  useEffect(() => {
+    if (!ready) return
+
+    const start = performance.now()
+    let frame = 0
+
+    /* Страховка на случай, когда кадры не выдаются вовсе: во вкладке
+       в фоне rAF молчит, а интро обязано закончиться и там */
+    const guard = setTimeout(
+      () => {
+        if (!done.current) {
+          done.current = true
+          onDone()
+        }
+      },
+      INTRO_END * 1000 + 400,
+    )
+
+    const tick = (now: number) => {
+      const t = (now - start) / 1000
+      const s = frameAt(Math.min(t, INTRO_END))
+
+      markX.set(s.markX)
+      markY.set(s.markY)
+      restX.set(s.restX)
+      restY.set(s.restY)
+      dotOpacity.set(s.dotVisible ? 1 : 0)
+
+      ballX.set(s.ballCx)
+      ballY.set(s.ballDrop)
+      ballScale.set(s.ballScale)
+      ballSpin.set(s.ballSpin)
+      ballOpacity.set(s.ballVisible ? 1 : 0)
+
+      if (t >= INTRO_END) {
+        if (!done.current) {
+          done.current = true
+          onDone()
+        }
+        return
+      }
+      frame = requestAnimationFrame(tick)
+    }
+
+    frame = requestAnimationFrame(tick)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(guard)
+    }
+  }, [
+    ready,
+    onDone,
+    markX,
+    markY,
+    restX,
+    restY,
+    dotOpacity,
+    ballX,
+    ballY,
+    ballScale,
+    ballSpin,
+    ballOpacity,
+  ])
+
+  /* Центр шарика приходит в координатах замка, а элементу нужен левый
+     край: половину диаметра снимаем здесь */
+  const ballLeft = useTransform(ballX, (v) => `${v - em.ball / 2}em`)
+  const ballTop = useTransform(ballY, (v) => `${BALL_TOP + v}em`)
+  const spin = useTransform(ballSpin, (v) => `${v}deg`)
+
   return (
     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
       {/* inline-flex и leading-none: обёртка обязана совпадать с
           коробкой замка, иначе шарик отсчитывается от строчного
           бокса, который выше на полуинтерлиньяж */}
       <span
-        className="relative inline-flex leading-none text-[clamp(1.6rem,7.4vw,5rem)]"
+        className="relative inline-flex leading-none text-[clamp(1.5rem,6.8vw,4.6rem)]"
         style={{ opacity: ready ? 1 : 0 }}
       >
-        {ready && (
-          <>
-            <Lockup animated parts={partAnim} />
+        <Lockup animated motions={motions} />
 
-            {/* Шарик живёт только в занавесе: в шапке на его месте
-                уже стоит точка, и они одного размера и цвета */}
-            <motion.span
-              aria-hidden="true"
-              className="absolute rounded-full bg-moss"
-              style={{
-                width: `${em.ball}em`,
-                height: `${em.ball}em`,
-                top: `${ballHome.top}em`,
-                left: `${ballHome.left}em`,
-              }}
-              initial={{ x: `${BALL_START}em`, rotate: 0, scale: 1 }}
-              animate={{
-                x: ['-14em', '0em', '0em'],
-                /* Оборот пропорционален пройденному пути: качение
-                   должно читаться качением, а не скольжением */
-                rotate: [0, (14 / (Math.PI * em.ball)) * 360, (14 / (Math.PI * em.ball)) * 360],
-                scale: [1, 1, em.dot / em.ball],
-              }}
-              transition={{
-                duration: t.settleAt + t.settle,
-                times: [0, t.roll / (t.settleAt + t.settle), 1],
-                ease: [EASE_ROLL, EASE_OUT],
-              }}
-            >
-              {/* Блик: чтобы качение читалось, а не выглядело
-                  скольжением */}
-              <span
-                className="absolute inset-0 m-auto rounded-full bg-moss-on opacity-50"
-                style={{
-                  width: '22%',
-                  height: '22%',
-                  transform: `translateX(${em.ball * 0.24}em)`,
-                }}
-              />
-            </motion.span>
-          </>
-        )}
+        <motion.span
+          aria-hidden="true"
+          className="absolute rounded-full bg-moss"
+          style={{
+            width: `${em.ball}em`,
+            height: `${em.ball}em`,
+            left: ballLeft,
+            top: ballTop,
+            scale: ballScale,
+            rotate: spin,
+            opacity: ballOpacity,
+            /* Точка отсчёта по низу: шарик обязан уменьшаться вниз,
+               садясь на базовую линию, а не стягиваться к себе */
+            transformOrigin: '50% 100%',
+          }}
+        >
+          {/* Блик: без него качение читается скольжением */}
+          <span
+            className="absolute top-1/2 left-1/2 rounded-full bg-moss-on opacity-50"
+            style={{ width: '22%', height: '22%', marginLeft: '2%', marginTop: '-11%' }}
+          />
+        </motion.span>
       </span>
     </div>
   )
 }
 
-/* Фон занавеса. Живёт отдельно от сцены, чтобы гаснуть уже после
-   того, как замок улетел.
-
-   Гаснет переходом CSS, а снимается таймером, а не по окончании
-   анимации. Причина: в фоновой вкладке кадры не выдаются, анимация
-   не доигрывает, и занавес оставался висеть поверх страницы
-   навсегда. Таймер срабатывает и там. */
-export const CURTAIN_FADE_MS = 500
+/* Фон занавеса. Гаснет переходом CSS, а снимается таймером, а не по
+   окончании анимации: в фоновой вкладке кадры не выдаются, анимация
+   не доигрывает, и занавес оставался висеть поверх страницы. */
+export const CURTAIN_FADE_MS = 620
 
 export function Curtain({ leaving }: { leaving: boolean }) {
   return (
     <div
       aria-hidden="true"
-      className={`fixed inset-0 z-40 bg-paper transition-opacity duration-500 ease-out ${
+      className={`fixed inset-0 z-40 bg-paper transition-opacity duration-[620ms] ease-out ${
         leaving ? 'pointer-events-none opacity-0' : ''
       }`}
     />
   )
-}
-
-/* Половины ждут врозь и сходятся. Значения отдаются наружу, потому
-   что кадры вешаются на части замка. */
-export const partAnim = {
-  mark: {
-    initial: { x: `${FAR_LEFT}em`, y: '-4em', opacity: 0 },
-    animate: { x: '0em', y: '0em', opacity: 1 },
-    transition: {
-      opacity: { duration: 0.01, delay: t.markAt },
-      y: { duration: t.fall, delay: t.markAt, ease: EASE_FALL },
-      x: { duration: t.close, delay: t.closeAt, ease: EASE_OUT },
-    },
-  },
-  rest: {
-    initial: { x: `${FAR_RIGHT}em`, y: '-4em', opacity: 0 },
-    animate: { x: '0em', y: '0em', opacity: 1 },
-    transition: {
-      opacity: { duration: 0.01, delay: t.fallAt },
-      y: { duration: t.fall, delay: t.fallAt, ease: EASE_FALL },
-      x: { duration: t.close, delay: t.closeAt, ease: EASE_OUT },
-    },
-  },
-  /* Точка проявляется в тот момент, когда шарик уже сжался до её
-     размера: подмены не видно */
-  dot: {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    transition: { duration: 0.01, delay: t.settleAt + t.settle - 0.02 },
-  },
 }

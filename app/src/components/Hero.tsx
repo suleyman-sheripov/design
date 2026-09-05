@@ -7,7 +7,9 @@ import { Mark } from './Mark'
    таком наборе не требуется. */
 export function Lede() {
   return (
-    <h1 className="m-0 max-w-[19ch] font-display text-[clamp(1.55rem,3.9vw,2.95rem)] leading-[1.08] font-semibold tracking-[-0.04em] text-balance">
+    /* Мельче замка в шапке намеренно: логотип держит верх страницы,
+       а фраза под ним читается, а не спорит с ним размером */
+    <h1 className="m-0 max-w-[21ch] font-display text-[clamp(1.2rem,2.5vw,1.85rem)] leading-[1.12] font-semibold tracking-[-0.035em] text-balance">
       Привет, я{' '}
       <span
         aria-hidden="true"
