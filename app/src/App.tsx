@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
-import { loadProfile, type Profile } from './data'
+import { loadProfile, loadProjects, type Profile, type Project } from './data'
+import { Colophon, Contact } from './components/Contact'
 import { Cta } from './components/Cta'
 import { HeroAct, Lede } from './components/Hero'
 import { CURTAIN_FADE_MS, Curtain, Intro } from './components/Intro'
@@ -9,12 +10,15 @@ import { Lockup } from './components/Lockup'
 import { Tile } from './components/Tile'
 import { Ticker } from './components/Ticker'
 import { Track } from './components/Track'
+import { CaseSheet, Work } from './components/Work'
 
-const shell = 'mx-auto w-full max-w-[1180px] px-[clamp(1.15rem,5vw,4rem)]'
+const shell = 'mx-auto w-full max-w-[var(--shell)] px-[var(--gutter)]'
 
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [projects, setProjects] = useState<Project[] | null>(null)
   const [failed, setFailed] = useState(false)
+  const [openCase, setOpenCase] = useState<Project | null>(null)
 
   /* Интро играет один раз за сессию: перезагрузка страницы в той же
      вкладке не должна каждый раз задерживать на четыре секунды */
@@ -26,6 +30,7 @@ export default function App() {
 
   useEffect(() => {
     loadProfile().then(setProfile, () => setFailed(true))
+    loadProjects().then(setProjects, () => setFailed(true))
   }, [])
 
   /* Занавес переживает конец сцены на время затухания, поэтому у
@@ -101,7 +106,13 @@ export default function App() {
             <Ticker />
           </div>
         </section>
+
+        <Work projects={projects} failed={failed} onOpen={setOpenCase} />
+        <Contact profile={profile} />
       </main>
+
+      <Colophon city={profile?.city ?? 'Минск'} />
+      <CaseSheet project={openCase} onClose={() => setOpenCase(null)} />
     </>
   )
 }
