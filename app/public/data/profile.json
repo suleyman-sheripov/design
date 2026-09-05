@@ -1,0 +1,76 @@
+{
+  "name": "Сулейман Шерипов",
+  "role": "Графический и UI/UX дизайнер",
+  "focus": "фирменный стиль · упаковка · интерфейсы",
+  "city": "Минск",
+  "email": "suleyman.sheripov@icloud.com",
+  "phone": "+375 25 756 98 61",
+  "links": {
+    "behance": "https://behance.net/suleymasheripov",
+    "dribbble": "https://dribbble.com/kilus"
+  },
+  "facts": [
+    "Минск",
+    "Больше года на коммерческом фрилансе",
+    "50+ учеников на курсах"
+  ],
+  "track": [
+    {
+      "client": "Donerio",
+      "role": "Графический дизайнер",
+      "kind": "Фриланс",
+      "period": "06 - 07.2026",
+      "note": "Фирменный стиль фастфуда: афиши, макет уличного лайтбокса, оформление соцсетей"
+    },
+    {
+      "client": "Агро-Импульс · Dr. Green",
+      "role": "Дизайнер упаковки",
+      "kind": "Фриланс",
+      "period": "03 - 05.2026",
+      "note": "Айдентика «Агро-техно» и векторные макеты упаковки под флексопечать"
+    },
+    {
+      "client": "Pro IT",
+      "role": "Преподаватель дизайна",
+      "kind": "Детские IT-курсы",
+      "period": "2025 - 07.2026",
+      "note": "Собрал программу и вёл курс по UI/UX и графике, 50+ учеников"
+    },
+    {
+      "client": "Billions Lottery",
+      "role": "UI/UX дизайнер",
+      "kind": "Фриланс",
+      "period": "09 - 10.2025",
+      "note": "Интерфейс Telegram-стартапа с нуля, UI-кит на 50+ компонентов"
+    },
+    {
+      "client": "Beauty Lab",
+      "role": "UI/UX дизайнер",
+      "kind": "Учебный проект",
+      "period": "04 - 05.2025",
+      "note": "Сайт салона красоты: путь до записи сокращён до двух кликов"
+    }
+  ],
+  "tools": [
+    {
+      "name": "Figma",
+      "for": "интерфейсы, прототипы, UI-киты",
+      "logo": "assets/tools/figma.png"
+    },
+    {
+      "name": "Illustrator",
+      "for": "вектор и макеты под печать",
+      "logo": "assets/tools/illustrator.png"
+    },
+    {
+      "name": "Photoshop",
+      "for": "растр, мокапы, ретушь",
+      "logo": "assets/tools/photoshop.png"
+    },
+    {
+      "name": "After Effects",
+      "for": "анимация и ролики",
+      "logo": "assets/tools/after-effects.png"
+    }
+  ]
+}

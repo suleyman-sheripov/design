@@ -1,0 +1,239 @@
+@import "tailwindcss";
+
+/* Дизайн-токены. Тот же набор, что был в css/tokens.css, но теперь
+   он же и есть конфигурация Tailwind: bg-paper, text-ink, gap-m
+   собираются отсюда, и второго места, где цвет можно объявить
+   иначе, физически нет. */
+@theme {
+  /* Бумага и чернила */
+  --color-paper: #f0eade;
+  --color-paper-raised: #fbf7ef;
+  --color-ink: #16130f;
+  /* 4.7:1 к бумаге: на 13-пиксельных подписях прежний #7B7365
+     не дотягивал до AA */
+  --color-ink-muted: #6e6659;
+  --color-rule: #d5cbb8;
+
+  /* Мох. Глубокий вариант — для мелкого текста, где основной сереет. */
+  --color-moss: #4a5d48;
+  --color-moss-deep: #3a4a39;
+  --color-moss-on: #fbf7ef;
+
+  /* Охра. Вторая рабочая краска: с мхом это зелень и земля.
+     4.5:1 к бумаге, проходит AA. */
+  --color-amber: #9a5a1a;
+  --color-amber-on: #fbf7ef;
+
+  /* Тёмная зона кейсов */
+  --color-night: #14120c;
+  --color-night-raised: #1e1b14;
+  --color-night-ink: #f0eade;
+  /* Приглушённый и охра по ночи: тёмные варианты там не читаются */
+  --color-night-muted: #9c9382;
+  --color-night-rule: #33301f;
+  --color-night-moss: #8ca889;
+  --color-night-amber: #d9903f;
+
+  /* Шрифты. Unbounded — геометрический гротеск с широким контрастом
+     ширин, узнаётся в вывеске. Golos Text спроектирован под кириллицу,
+     а не латиница с прикрученными русскими буквами. */
+  --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --font-body: "Golos Text", "Inter", system-ui, -apple-system, sans-serif;
+
+  /* Шкала кегля */
+  --text-label: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+
+  /* Скругления */
+  --radius-tile: 18px;
+  --radius-s: 11px;
+
+  /* Кривые плавности из спецификации движения */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-fall: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --ease-roll: cubic-bezier(0.15, 0.62, 0.36, 1);
+
+  /* Лента едет ровно и бесконечно: два одинаковых прохода, сдвиг
+     на половину — шва не видно */
+  --animate-ticker: ticker 34s linear infinite;
+  @keyframes ticker {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scrollbar-color: var(--color-rule) var(--color-paper);
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Поверхности, которые браузер рисует своими цветами. На тёплой
+     бумаге системная синева выделения выдаёт, что страницу не
+     доделали. */
+  ::selection {
+    background: var(--color-moss);
+    color: var(--color-moss-on);
+  }
+
+  a {
+    color: inherit;
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus, var(--color-moss));
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* В тёмной зоне мох даёт 2.7:1 и обводка фокуса теряется в фоне */
+  [data-tone="night"] {
+    --focus: var(--color-night-moss);
+  }
+
+  img,
+  svg,
+  video {
+    display: block;
+    max-width: 100%;
+  }
+  img {
+    height: auto;
+  }
+}
+
+/* Формы, которые в утилитах читались бы хуже, чем в обычном CSS:
+   вырез под ярлык и его вогнутый стык. Всё остальное собирается
+   утилитами прямо в разметке. */
+@layer components {
+  .tile {
+    --notch-h: 1.8rem;
+    --pad-x: clamp(1.05rem, 1.8vw, 1.5rem);
+    --pad-y: clamp(0.7rem, 1.2vw, 1rem);
+    --tile-bg: var(--color-paper-raised);
+    --tile-fg: var(--color-ink);
+    --fillet: 11px;
+
+    color: var(--tile-fg);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .tile[data-fill="moss"] {
+    --tile-bg: var(--color-moss);
+    --tile-fg: var(--color-moss-on);
+  }
+
+  /* Ширину выреза задаёт сам ярлык: он обычный элемент потока, а
+     заливка занимает остаток. Синхронизировать нечего, поэтому
+     подпись физически не может вылезти за вырез. */
+  .notch-row {
+    display: flex;
+    align-items: stretch;
+    min-height: var(--notch-h);
+  }
+
+  .notch-label {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    height: var(--notch-h);
+    margin: 0;
+    padding-inline: 0.1rem 1.05rem;
+    font-family: var(--font-body);
+    font-size: var(--text-label);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+    white-space: nowrap;
+  }
+
+  /* Вогнутый стык. Уступ под прямым углом читался как сбой
+     отрисовки, поэтому внутренний угол скругляется навстречу
+     плитке: квадрат цвета плитки, из которого радиальным
+     градиентом вырезана четверть круга. Сидит на самом ярлыке,
+     привязан к его правому краю, а не к числу. */
+  .notch-label::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: var(--fillet);
+    height: var(--fillet);
+    background: radial-gradient(
+      circle at 0 0,
+      transparent var(--fillet),
+      var(--tile-bg) var(--fillet)
+    );
+    pointer-events: none;
+  }
+
+  .notch-fill {
+    flex: 1;
+    min-width: var(--radius-tile);
+    background: var(--tile-bg);
+    border-top-right-radius: var(--radius-tile);
+  }
+
+  /* Верх-право у тела квадратный: там заливка продолжается сверху */
+  .tile-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+    background: var(--tile-bg);
+    border-radius: var(--radius-tile) 0 var(--radius-tile) var(--radius-tile);
+    padding: var(--pad-y) var(--pad-x) var(--pad-x);
+  }
+}
+
+@layer utilities {
+  /* Видно скринридеру, не видно глазу */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Постоянное движение — первое, что мешает при чувствительности
+   к анимации */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
