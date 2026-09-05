@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { loadProfile, loadProjects, type Profile, type Project } from './data'
 import { Colophon, Contact } from './components/Contact'
 import { Cta } from './components/Cta'
+import { Cursor } from './components/Cursor'
 import { HeroAct, Lede } from './components/Hero'
 import { CURTAIN_FADE_MS, Curtain, Intro } from './components/Intro'
 import { Kit } from './components/Kit'
@@ -10,6 +11,7 @@ import { Lockup } from './components/Lockup'
 import { Tile } from './components/Tile'
 import { Ticker } from './components/Ticker'
 import { Track } from './components/Track'
+import { GooDefs } from './components/Symbiote'
 import { CaseSheet, Work } from './components/Work'
 
 const shell = 'mx-auto w-full max-w-[var(--shell)] px-[var(--gutter)]'
@@ -45,6 +47,8 @@ export default function App() {
 
   return (
     <>
+      <GooDefs />
+      <Cursor />
       {curtain && <Curtain leaving={introDone} />}
       {!introDone && <Intro onDone={finishIntro} />}
 
