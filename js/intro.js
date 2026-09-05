@@ -158,10 +158,11 @@ export function initIntro(root) {
      шрифт уже пришёл и коробка шапки встала окончательно. */
   function flyHome() {
     const box = scene.parentElement.getBoundingClientRect();
-    const s = Math.min(1, (scene.parentElement.clientWidth || g.lockupW) / g.lockupW);
+    const { s, lift } = homeFit();
 
     const from = scene.style.transform;
-    const to = 'translate(' + box.left.toFixed(1) + 'px, ' + box.top.toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
+    const to = 'translate(' + box.left.toFixed(1) + 'px, ' + (box.top + lift).toFixed(1) +
+      'px) scale(' + s.toFixed(4) + ')';
 
     const fly = scene.animate(
       [{ transform: from }, { transform: to }],
@@ -237,15 +238,28 @@ export function initIntro(root) {
     if (reduce || seen) settle();
   }
 
+  /* Домашний масштаб и поправка на точку отсчёта. Сцена сжимается
+     от своей вертикальной середины (transform-origin: left center),
+     а коробка в шапке получает высоту как отмеренную от верха.
+     Без поправки замок висел на (SCENE_H / 2) * (1 - s) ниже своей
+     коробки и обрезался её overflow: чем мельче знак, тем сильнее.
+     Одна функция на два места: посадка после интро и обычная
+     подгонка обязаны давать одну и ту же трансформу, иначе в конце
+     полёта знак дёргается. */
+  function homeFit() {
+    const room = scene.parentElement.clientWidth || g.lockupW;
+    const s = Math.min(1, room / g.lockupW);
+    return { s, lift: -(SCENE_H / 2) * (1 - s) };
+  }
+
   /* Масштабируем по ширине собранного замка, а не всей сцены:
      хвост сцены — разгон для шарика, он всегда за краем. */
   function fit() {
     if (curtain) return placeCurtain();
 
-    const room = scene.parentElement.clientWidth || g.lockupW;
-    const s = Math.min(1, room / g.lockupW);
+    const { s, lift } = homeFit();
 
-    scene.style.transform = 'scale(' + s + ')';
+    scene.style.transform = 'translateY(' + lift.toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
     scene.parentElement.style.height = Math.round(SCENE_H * s) + 'px';
   }
 

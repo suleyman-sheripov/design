@@ -108,46 +108,9 @@ button {
    В бенто структуру держат края плиток, поэтому линейка убрана:
    две сетки в одном экране спорят. */
 
-/* ── Шапка раздела ─────────────────────────────────────────
-   Номер живёт в рельсе, заголовок — в первой колонке контента,
-   счётчик прижат вправо. Одинаково во всех разделах. */
-
-.sec-head {
-  display: grid;
-  grid-template-columns: var(--rail) minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 0.5rem 1rem;
-  margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
-}
-
-.sec-index {
-  font-size: var(--t-xs);
-  font-variant-numeric: tabular-nums;
-  color: var(--moss-deep);
-  letter-spacing: 0.06em;
-}
-
-.sec-head h2 {
-  font-size: clamp(1.6rem, 4vw, 2.6rem);
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.sec-count {
-  font-size: var(--t-xs);
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.sec-lead {
-  grid-column: 2 / -1;
-  max-width: 46ch;
-  font-size: var(--t-sm);
-  color: var(--ink-muted);
-  margin-top: 0.35rem;
-}
+/* Шапка раздела описана в hero.css: там она под рельс уже не
+   свёрстана, и держать здесь вторую версию значило переопределять
+   её вслепую. */
 
 /* ── Тёмная зона ───────────────────────────────────────────
    Работы смотрят с тёмного, как слайды на просвет. Это
@@ -162,6 +125,9 @@ button {
   /* Тёмный мох по ночи не виден вовсе: номера разделов и подписи
      ролей берут светлый вариант того же цвета */
   --moss-deep: #8CA889;
+  /* Охра тем же порядком: тёмная даёт по ночи 3.5:1 и на номерах
+     разделов не читается, светлая — 7.2:1 */
+  --amber: #D9903F;
   /* 7.2:1 к ночи против 2.7:1 у основного мха */
   --focus: #8CA889;
   --rule: #33301F;

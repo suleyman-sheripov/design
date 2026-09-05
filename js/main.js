@@ -104,8 +104,7 @@ function renderTrack(track) {
 
   list.replaceChildren(...track.map(item => {
     const li = document.createElement('li');
-    /* Учебная работа весит меньше коммерческой — это видно цветом */
-    li.className = item.kind === 'Учебный проект' ? 'tr tr--minor' : 'tr';
+    li.className = 'tr ' + dotKind(item.kind);
 
     const what = document.createElement('div');
     what.className = 'tr-what';
@@ -120,6 +119,17 @@ function renderTrack(track) {
      или нет — величина не постоянная. Наблюдатель дешевле, чем
      обработчик resize: он молчит, пока размер не поменялся. */
   new ResizeObserver(() => markCut(list)).observe(list);
+}
+
+/* Цвет точки различает род занятия: работа на клиента, обучение
+   других и собственная учёба — три разные вещи, и в списке они
+   стоят вперемешку. Всё, что не курсы и не учебное, считается
+   работой на клиента: так новое место в JSON красится верно
+   само, без правки кода. */
+function dotKind(kind) {
+  if (kind === 'Учебный проект') return 'tr--minor';
+  if (/курс/i.test(kind)) return 'tr--teach';
+  return '';
 }
 
 /* Растворять низ списка можно, только если под краем правда
@@ -142,8 +152,8 @@ function renderKit(tools) {
     const img = document.createElement('img');
     img.src = tool.logo;
     img.alt = '';
-    img.width = 26;
-    img.height = 26;
+    img.width = 22;
+    img.height = 22;
 
     const text = document.createElement('div');
     text.append(span('kit-name', tool.name), span('kit-for', tool.for));

@@ -17,7 +17,7 @@
   padding-block: 0.4rem clamp(1.25rem, 3vw, 2rem);
   font-family: var(--font-display);
   font-weight: var(--w-display);
-  font-size: clamp(1.15rem, 5vw, 2.6rem);
+  font-size: clamp(1.05rem, 3.6vw, 2rem);
   line-height: 1.05;
   letter-spacing: -0.045em;
   text-decoration: none;
@@ -32,7 +32,7 @@
 }
 
 .mailto-rule {
-  height: 2px;
+  height: 1px;
   margin-left: var(--rail);
   background: var(--ink);
   transform-origin: left center;
