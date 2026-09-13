@@ -539,3 +539,17 @@ html[data-page-changing] .case-cover-caption,html[data-page-changing] .case-navi
 }
 .project-art.preview-plain .project-paper,.project-art.preview-edge .project-paper { display:flex; align-items:center; justify-content:center; }
 .project-art .project-paper img[data-fit="contain"] { width:auto; height:auto; max-width:100%; max-height:100%; }
+
+/* Режим выбора живого редактора: тонкая обводка при наведении и
+   короткая подпись вместо обычного «Смотреть ↗». Свой цвет — точка
+   моста, не акцент сайта, чтобы не путать с обычным ховером. */
+.is-edit-target { outline: 1px dashed transparent; outline-offset: 3px; transition: outline-color 160ms ease-out; }
+.is-edit-target:hover, .is-edit-target:focus-visible { outline-color: var(--color-sky); }
+/* «Смотреть ↗» обещает переход на кейс — здесь клик ведёт в
+   инспектор, поэтому подпись своя, а не переопределённый текст той же */
+.is-edit-target .project-open { display: none; }
+.is-edit-target:hover .exhibit-caption::after, .is-edit-target:focus-visible .exhibit-caption::after {
+  content: 'Изменить в редакторе'; position: absolute; inset: auto 0 100% 0; padding: 4px 0;
+  font: 12px/1.3 system-ui; color: var(--color-sky); pointer-events: none;
+}
+.is-edit-target .exhibit-caption { position: relative; }

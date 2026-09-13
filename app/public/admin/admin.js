@@ -1,5 +1,6 @@
 import { GitHub } from './github.js';
 import { SHOTS_DIR, safeName, validateContent, imageNames } from './model.js';
+import { initLiveEditor } from './editor-live.js';
 
 import { DEFAULT_SETTINGS, SETTING_LABELS } from './settings.js';
 /* Доступ к записи определяет GitHub. Токен существует только в памяти. */
@@ -11,16 +12,19 @@ let dirty = false, busy = false, local = false, config;
 let lastState='', history=[], defaultServices=[];
 const uploads = new Map();
 const expandedProjects = new Set(['donerio']);
+/* Живой редактор создаётся один раз, при первой успешной load() —
+   до этого момента data ещё нет и строить снимок для iframe не из чего */
+let liveEditor = null;
 
 start();
 async function start() {
   el('save').addEventListener('click', save);
   try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('admin-token'); } catch { /* Legacy token cleanup. */ }
   el('preview').addEventListener('click', () => {
-    try { validateContent(data); sessionStorage.setItem('portfolio-preview',JSON.stringify({data,images:Object.fromEntries([...uploads].map(([n,v])=>[n,v.url])),mediaBase:local?'':github.raw(SHOTS_DIR+'/')})); window.open('../?editor-preview=1','_blank'); }
+    try { sessionStorage.setItem('portfolio-preview',JSON.stringify(buildPreviewPayload())); window.open('../?editor-preview=1','_blank'); }
     catch(err) {say(ui.saveState,err.message,'bar-state bar-state--bad')}
   });
-  el('undo').addEventListener('click',()=>{if(!history.length)return;data=JSON.parse(history.pop());lastState=serialize(data);render();setDirty(lastState!==saved);el('undo').disabled=!history.length;});
+  el('undo').addEventListener('click',()=>{liveEditor?.flush();if(!history.length)return;data=JSON.parse(history.pop());lastState=serialize(data);render();setDirty(lastState!==saved);el('undo').disabled=!history.length;});
   el('importDraft').addEventListener('change',async e=>{
     const file=e.target.files[0];if(!file || busy)return;
     try {if(file.size>2*1024*1024)throw Error('JSON больше 2 МБ.');const next=validateContent(JSON.parse(await file.text()));if(!confirm('Заменить текущий черновик содержимым файла?'))return;data=next;touch();render();}
@@ -31,12 +35,14 @@ async function start() {
     el('localDraft').addEventListener('click',async()=>{setBusy(true);try {local=true;await load();ui.gate.hidden=true;ui.editor.hidden=false;ui.barActions.hidden=false;ui.barRepo.hidden=false;ui.barRepo.textContent='Локальный черновик · без публикации';el('save').textContent='Скачать JSON';el('historyLink').hidden=true;}catch(err){ui.gateError.textContent=err.message;local=false}finally{setBusy(false)}});
   }
   el('signOut').addEventListener('click', () => {
+    liveEditor?.flush();
     if (dirty && !confirm('Выйти и потерять несохранённые правки?')) return;
     try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('admin-token'); } catch { /* Хранилище может быть закрыто. */ }
     clearUploads(); github = null; data = null;
     location.reload();
   });
   el('reload').addEventListener('click', async () => {
+    liveEditor?.flush();
     if (dirty && !confirm('Перечитать и потерять несохранённые правки? Сначала можно скачать копию.')) return;
     setBusy(true);
     try { await load(); } catch (err) { say(ui.saveState, err.message, 'bar-state bar-state--bad'); }
@@ -79,10 +85,16 @@ async function load() {
   const loaded = local ? await (async()=>{const r=await fetch('../content/data/site.json',{cache:'no-store'});if(!r.ok)throw Error('Локальные данные недоступны.');const data=validateContent(await r.json());return {data,head:'local',files:new Set(imageNames(data).map(n=>SHOTS_DIR+'/'+n+'.webp'))}})() : await github.load();
   head = loaded.head; data = loaded.data; knownFiles = loaded.files;
   data.services ||= structuredClone(defaultServices);
-  saved = serialize(data); lastState=saved; history=[];el('undo').disabled=true; clearUploads(); render(); setDirty(false);
+  saved = serialize(data); lastState=saved; history=[];el('undo').disabled=true; clearUploads();
+  /* Один раз за сессию: до первой успешной load() строить снимок
+     для iframe не из чего, а Reload не должен пересоздавать iframe
+     заново — тогда пропала бы уже начатая правка в инспекторе */
+  if (!liveEditor) liveEditor = initLiveEditor({ mount: el('liveEditorMount'), model: { imageNames, safeName }, field, shrink, uploads, assetUrl, touch, setDirty, render, buildPreviewPayload, setStatus: (message, bad) => say(ui.saveState, message, bad ? 'bar-state bar-state--bad' : 'bar-state') });
+  render(); setDirty(false);
   say(ui.loadState, '', 'note');
 }
 async function save() {
+  liveEditor?.flush();
   if (!data || busy) return;
   setBusy(true);
   say(ui.saveState, 'Сохраняю содержимое и снимки…', 'bar-state');
@@ -113,6 +125,13 @@ function setBusy(value) {
 function exportBackup() {
   download('site-unsaved.json', new Blob([serialize(data)], {type:'application/json'}));
   for (const [name,value] of uploads) download(name+'.webp',new Blob([value.bytes],{type:'image/webp'}));
+}
+/* Общий снимок черновика для предпросмотра. Раньше собирался только
+   внутри обработчика кнопки «Предпросмотр»; теперь им же стартует
+   iframe живого редактора — форма одна, а не расходящиеся копии. */
+function buildPreviewPayload() {
+  validateContent(data);
+  return {data,images:Object.fromEntries([...uploads].map(([n,v])=>[n,v.url])),mediaBase:local?'':github.raw(SHOTS_DIR+'/')};
 }
 function clearUploads() { for (const value of uploads.values()) URL.revokeObjectURL(value.url); uploads.clear(); }
 function download(name, blob) {
@@ -145,6 +164,10 @@ function render() {
 
   renderList(ui.trackRows, el('trackEmpty'), data.profile.track ||= [], trackRow);
   renderList(ui.projectRows, el('projectsEmpty'), data.projects.projects ||= [], projectRow);
+  /* Единственное место, где живой редактор узнаёт о новом data —
+     из этой же функции, чем бы правка ни была вызвана: старой формой,
+     Undo или самим инспектором */
+  liveEditor?.sync(data);
 }
 
 function renderList(host, empty, list, build) {
@@ -346,7 +369,12 @@ function remove(i, list, title) {
   return btn;
 }
 
-function field(label, value, onInput, opts = {}) {
+/* export — переиспользуется живым редактором ради одной и той же
+   визуальной формы поля. opts.commit:'manual' — единственное, что
+   ему нужно сверх обычного поведения: не писать историю Undo на
+   каждую букву. Ни один существующий вызов эту опцию не передаёт,
+   поэтому для всех них ничего не меняется. */
+export function field(label, value, onInput, opts = {}) {
   const wrap = document.createElement('label');
   wrap.className = 'field' + (opts.wide ? ' field--wide' : '') + (opts.compact ? ' field--compact' : '');
 
@@ -356,7 +384,7 @@ function field(label, value, onInput, opts = {}) {
   if(opts.type==='number'){input.min='0';input.max='40';}
   input.value = value ?? '';
   input.spellcheck = opts.tag === 'textarea';
-  input.addEventListener('input', () => { onInput(input.value); touch(); });
+  input.addEventListener('input', () => { onInput(input.value); if (opts.commit !== 'manual') touch(); });
 
   wrap.append(text('field-label', label), input);
   if (opts.hint) wrap.append(text('field-hint', opts.hint));
@@ -439,7 +467,9 @@ function say(node, message, className) {
 }
 
 
-async function shrink(file) {
+/* export — переиспользуется живым редактором (editor-live.js) для
+   загрузки превью: одна логика сжатия на весь редактор, а не две */
+export async function shrink(file) {
   if (!['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error('Подойдут PNG, JPEG и WebP.');
   if (file.size > 20 * 1024 * 1024) throw new Error('Исходник больше 20 МБ. Экспортируй отдельные экраны.');
   const bitmap = await createImageBitmap(file);
@@ -451,7 +481,10 @@ async function shrink(file) {
     canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.88));
     if (!blob || blob.type !== 'image/webp') throw new Error('Браузер не умеет экспортировать WebP. Открой редактор в актуальном Chrome, Edge, Firefox или Safari.');
-    return {bytes: new Uint8Array(await blob.arrayBuffer()), url:URL.createObjectURL(blob)};
+    /* blob хранится рядом с bytes: живому редактору он нужен как есть
+       для structured clone через postMessage, без сборки заново из
+       байт. .arrayBuffer() ниже читает копию и не портит сам blob. */
+    return {bytes: new Uint8Array(await blob.arrayBuffer()), url:URL.createObjectURL(blob), blob};
   } finally { bitmap.close(); }
 }
 function serialize(value) { return JSON.stringify(value, null, 2) + '\n'; }

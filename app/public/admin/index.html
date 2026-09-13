@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com; frame-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <title>Админка. Содержимое сайта</title>
@@ -82,7 +82,17 @@
 
     <p class="note" id="loadState" role="status" aria-live="polite"></p>
 
-    <nav class="editor-nav" aria-label="Разделы редактора"><a href="#settings">Страница и стиль</a><a href="#cases">Кейсы</a><a href="#services">Услуги</a><a href="#profile">Контакты</a><a href="#experience">Опыт</a><a href="../" target="_blank" rel="noopener">Открыть сайт ↗</a></nav>
+    <nav class="editor-nav" aria-label="Разделы редактора"><a href="#live">Живой редактор</a><a href="#settings">Страница и стиль</a><a href="#cases">Кейсы</a><a href="#services">Услуги</a><a href="#profile">Контакты</a><a href="#experience">Опыт</a><a href="../" target="_blank" rel="noopener">Открыть сайт ↗</a></nav>
+
+    <!-- Живой редактор: тот же data, что и вся форма ниже, только
+         виден результат сразу на самом сайте. Первая версия покрывает
+         один сценарий — выбор карточки проекта, заголовок и превью;
+         остальная форма ниже никуда не делась и работает как раньше. -->
+    <section class="block" id="live">
+      <h2>Живой редактор</h2>
+      <p class="note">Выберите карточку проекта прямо на сайте слева — справа появятся её заголовок и превью. Изменения видно сразу, без сохранения. Отменить правку можно кнопкой вверху страницы.</p>
+      <div id="liveEditorMount"></div>
+    </section>
 
     <section class="block" id="settings"><h2>Страница и оформление</h2><p class="note">Изменения видны в предпросмотре до сохранения. Логотип и авторская анимация сохраняют свою форму.</p><div class="grid" id="settingsFields"></div></section>
     <section class="block" id="cases">

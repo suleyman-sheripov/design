@@ -12,6 +12,7 @@ import { GooDefs } from './components/Symbiote'
 import { Work } from './components/Work'
 import { CasePage } from './components/CasePage'
 import { DEFAULT_SETTINGS } from '../public/admin/settings.js'
+import { EditBridgeContext, usePreviewBridge } from './lib/previewBridge'
 import { SERVICES } from './lib/services'
 import { SettingsContext } from './lib/settings'
 import { SoundReplay } from './components/SoundReplay'
@@ -34,19 +35,34 @@ export default function App() {
   const [projects,setProjects] = useState<Project[]>(initialContent.projects.projects.filter(p=>p.status==='published'))
   const [fallback,setFallback] = useState(false)
   const route = useCaseNavigation()
+  /* Живой мост включается только внутри iframe редактора: обычная
+     страница и старое «Предпросмотр» в новой вкладке этот путь не
+     проходят вовсе, см. previewBridge.ts */
+  const bridge = usePreviewBridge()
+  useEffect(() => {
+    if (!bridge.document) return
+    setSite(bridge.document)
+    setProfile(bridge.document.profile)
+    setProjects(bridge.document.projects.projects.filter(p=>p.status==='published'))
+  }, [bridge.document])
   const [stage,setStage] = useState<Stage>(() => routeSlug() || seenIntro() || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'live' : 'intro')
   const [curtain,setCurtain] = useState(() => stage==='intro')
   useLayoutEffect(() => {
     if (!location.hash || location.hash === '#') window.scrollTo({top:0,behavior:'instant'})
   }, [])
   useEffect(()=>{
+    /* Живой мост уже приносит документ сам; обычная загрузка контента
+       здесь не нужна и опасна — если бы её промис разрешился ПОСЛЕ
+       снимка от моста (в проде это сетевой запрос к GitHub), она
+       откатила бы черновик к опубликованной версии прямо на глазах */
+    if (bridge.active) return
     let active = true
     const stale = () => setFallback(true)
     window.addEventListener('content-fallback',stale)
     const stop = startAnalytics()
     void content().then(d=>{if(active){setSite(d);setProfile(d.profile);setProjects(d.projects.projects.filter(p=>p.status==='published'))}}).catch(stale)
     return ()=>{active=false;window.removeEventListener('content-fallback',stale);stop()}
-  },[])
+  },[bridge.active])
   const finishIntro = useCallback(()=>{
     rememberIntro();setStage('landing')
     setTimeout(()=>setStage('live'),LANDING_MS)
@@ -56,6 +72,7 @@ export default function App() {
   const project = projects.find(p=>p.slug===route.slug)
   const next = project && projects.length > 1 ? projects[(projects.indexOf(project)+1)%projects.length] : undefined
   return <SettingsContext.Provider value={{settings,services:site.services ?? [...SERVICES]}}>
+  <EditBridgeContext.Provider value={bridge}>
     {new URLSearchParams(location.search).has('editor-preview') && <div className="preview-notice">Предпросмотр · изменения ещё не опубликованы</div>}
     <GooDefs /><Cursor />
     {curtain && <Curtain leaving={landed} />}
@@ -80,5 +97,6 @@ export default function App() {
       <SoundReplay live={stage==='live' && !route.slug} onReplay={()=>{window.scrollTo({top:0,behavior:'instant'});setCurtain(true);setStage('intro')}} />
     </div>
     {route.slug !== null && (project ? <CasePage key={project.slug} project={project} next={next} profile={profile} onOpen={route.open} onHome={route.home} /> : <main className="missing-case"><p className="eyebrow">Работа не найдена</p><h1>Похоже, этот лист<br />ещё не на выставке.</h1><button type="button" onClick={route.home}>← Ко всем работам</button></main>)}
+  </EditBridgeContext.Provider>
   </SettingsContext.Provider>
 }
