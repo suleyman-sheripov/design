@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { initLiveEditor } from '../public/admin/editor-live.js';
+import { createHistory, wireTextCommit } from '../public/admin/history.js';
 import {
   CHANNEL, isValidApplied, isValidInit, isValidModeMessage, isValidRevision,
   isValidSelection, isValidSnapshot, looksLikeDraft, readEnvelope,
@@ -52,10 +53,15 @@ function harness(overrides = {}) {
   let epoch = 0, commits = 0, imageJobs = 0, editor;
 
   const shrink = file => new Promise(resolve => pending.set(file.name, () => resolve({ url: 'blob:' + file.name, blob: new Blob([file.name], { type: 'image/webp' }), bytes: new Uint8Array([1]) })));
+  /* Заглушка стоит на месте настоящего field() из admin.js, который
+     на каждый input сам зовёт wireTextCommit → history.markDirty() →
+     notify(). Здесь тот же контракт воспроизведён впрямую: editor —
+     let-переменная, к моменту первого события ввода она уже
+     присвоена ниже (initLiveEditor к этому моменту уже вернулся). */
   const field = (label, value, change) => {
     const wrapper = new Element('label'), input = new Element('input');
     input.label = label; input.value = value;
-    input.addEventListener('input', () => change(input.value));
+    input.addEventListener('input', () => { change(input.value); editor.notify(current); });
     wrapper.append(input);
     return wrapper;
   };
@@ -66,7 +72,7 @@ function harness(overrides = {}) {
     field, shrink, uploads,
     assetUrl: name => uploads.get(name)?.url ?? name,
     touch: () => { commits++; },
-    setDirty() {},
+    commit: () => {},
     render: () => editor.sync(current),
     buildPreviewPayload: () => ({ data: current }),
     setStatus: message => { throw Error(message); },
@@ -161,7 +167,6 @@ test('Текст не пересылает уже отправленную ка�
 
   const allWithAsset = h.iframe.messages.filter(m => m.kind === 'snapshot' && Object.values(m.assets ?? {}).some(v => v instanceof Blob));
   assert.equal(allWithAsset.length, 1, 'Blob обязан уйти один раз за всю последовательность, а не при каждом снимке');
-  h.editor.flush();
 });
 
 test('Картинка не переотправляется, пока используется; выходит из употребления и возвращается — пересылается заново', async () => {
@@ -198,44 +203,97 @@ test('Картинка не переотправляется, пока испо�
   assert.equal(resent.length, 1, 'вернувшийся в употребление id обязан прийти снова');
 });
 
-test('Старое поле формы теперь уведомляет живой предпросмотр из touch()', async () => {
+/* field()/touch()/select() в admin.js вырезаются как исходный текст и
+   выполняются в песочнице — тот же приём, что в присланном
+   reproduce.mjs. Раньше песочница подсовывала им плоский массив
+   history и свою setDirty; после перехода на общую транзакционную
+   историю (history.js) им нужна НАСТОЯЩАЯ history — иначе тест
+   проверял бы уже не тот код, который реально выполняется в браузере. */
+function adminSandbox(h, current) {
+  const notified = [];
+  const history = createHistory({
+    getData: () => current,
+    setData: next => { Object.keys(current).forEach(k => delete current[k]); Object.assign(current, next); },
+    onChange: () => { notified.push(1); h.editor.notify(current); },
+  });
+  return {
+    ctx: {
+      document: globalThis.document, data: current, history, wireTextCommit,
+      el: () => ({ disabled: false }), setDirty() {}, text: () => new Element('span'),
+    },
+    notified,
+  };
+}
+
+test('Старое поле формы теперь уведомляет живой предпросмотр на каждый ввод', async () => {
   const h = harness();
+  const current = h.current;
   h.iframe.messages.length = 0;
+  const { ctx } = adminSandbox(h, current);
 
   const admin = await readFile(new URL('../public/admin/admin.js', import.meta.url), 'utf8');
   const fieldSource = admin.slice(admin.indexOf('export function field('), admin.indexOf('\nfunction select(')).replace('export function', 'function');
-  const touchSource = admin.match(/function touch\(\) \{[^\n]+/)[0];
 
-  const wrap = vm.runInNewContext(fieldSource + '\n' + touchSource + '\nfield("Имя","Old",value=>data.profile.name=value)', {
-    document: globalThis.document, data: h.current, history: [], lastState: JSON.stringify(h.current), serialize: JSON.stringify,
-    el: () => ({}), setDirty() {}, text: () => new Element('span'), liveEditor: h.editor,
-  });
+  const wrap = vm.runInNewContext(fieldSource + '\nfield("Имя","Old",value=>data.profile.name=value)', ctx);
   const input = wrap.querySelector();
   input.value = 'New';
   await input.fire('input');
 
-  assert.equal(h.current.profile.name, 'New');
-  assert.ok(h.iframe.messages.length > 0, 'touch() обязан толкнуть снимок в живой предпросмотр');
+  assert.equal(current.profile.name, 'New');
+  assert.ok(h.iframe.messages.some(m => m.kind === 'snapshot'), 'ввод в поле обязан толкнуть снимок в живой предпросмотр немедленно, не дожидаясь паузы или blur');
 });
 
-test('select() тоже уведомляет живой предпросмотр через touch()', async () => {
+test('select() тоже уведомляет живой предпросмотр', async () => {
   const h = harness();
+  const current = h.current;
   h.iframe.messages.length = 0;
+  const { ctx } = adminSandbox(h, current);
 
   const admin = await readFile(new URL('../public/admin/admin.js', import.meta.url), 'utf8');
   const selectSource = admin.slice(admin.indexOf('function select('), admin.indexOf('\nfunction text('));
   const touchSource = admin.match(/function touch\(\) \{[^\n]+/)[0];
 
-  const wrap = vm.runInNewContext(selectSource + '\n' + touchSource + '\nselect("Статус",["draft","published"],"draft",v=>data.status=v)', {
-    document: globalThis.document, data: h.current, history: [], lastState: JSON.stringify(h.current), serialize: JSON.stringify,
-    el: () => ({}), setDirty() {}, text: () => new Element('span'), liveEditor: h.editor,
-  });
+  const wrap = vm.runInNewContext(selectSource + '\n' + touchSource + '\nselect("Статус",["draft","published"],"draft",v=>data.status=v)', ctx);
   const box = wrap.children.find(c => c.tag === 'select');
   box.value = 'published';
   await box.fire('change');
 
-  assert.equal(h.current.status, 'published');
-  assert.ok(h.iframe.messages.length > 0);
+  assert.equal(current.status, 'published');
+  assert.ok(h.iframe.messages.some(m => m.kind === 'snapshot'));
+});
+
+test('Группировка: несколько input подряд в одном поле — одна запись Undo, а Redo после новой правки недоступен', async () => {
+  const h = harness();
+  const current = h.current;
+  const { ctx } = adminSandbox(h, current);
+  const history = ctx.history;
+
+  const admin = await readFile(new URL('../public/admin/admin.js', import.meta.url), 'utf8');
+  const fieldSource = admin.slice(admin.indexOf('export function field('), admin.indexOf('\nfunction select(')).replace('export function', 'function');
+  const wrap = vm.runInNewContext(fieldSource + '\nfield("Имя",current.profile.name,value=>current.profile.name=value)', { ...ctx, current });
+  const input = wrap.querySelector();
+
+  input.value = 'N'; await input.fire('input');
+  input.value = 'Ne'; await input.fire('input');
+  input.value = 'New'; await input.fire('input');
+  assert.equal(history.canUndo(), false, 'до commit ничего не должно быть в стеке Undo');
+
+  await input.fire('blur');
+  assert.equal(history.canUndo(), true);
+  assert.equal(current.profile.name, 'New');
+
+  assert.equal(history.undo(), true);
+  assert.notEqual(current.profile.name, 'New');
+  assert.equal(history.canRedo(), true);
+
+  assert.equal(history.redo(), true);
+  assert.equal(current.profile.name, 'New');
+
+  // Undo снова, затем НОВАЯ правка — ветка Redo обязана исчезнуть
+  history.undo();
+  assert.equal(history.canRedo(), true);
+  input.value = 'Совсем другое'; await input.fire('input');
+  assert.equal(history.canRedo(), false, 'начатая новая правка стирает ветку Redo, даже если её ещё не закоммитили');
 });
 
 // ── Общий протокол (bridge-protocol.js) ──────────────────────────

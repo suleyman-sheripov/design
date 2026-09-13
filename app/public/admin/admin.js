@@ -1,4 +1,5 @@
 import { GitHub } from './github.js';
+import { createHistory, wireTextCommit } from './history.js';
 import { SHOTS_DIR, safeName, validateContent, imageNames } from './model.js';
 import { initLiveEditor } from './editor-live.js';
 
@@ -9,8 +10,18 @@ const el = id => document.getElementById(id);
 const ui = Object.fromEntries(['gate','gateForm','gateError','editor','loadState','saveState','barActions','barRepo','profileFields','trackRows','toolsRows','projectRows'].map(id => [id, el(id)]));
 let github, head, data, saved, knownFiles;
 let dirty = false, busy = false, local = false, config;
-let lastState='', history=[], defaultServices=[];
+let defaultServices=[];
 const uploads = new Map();
+/* Одна история на всю админку: старую форму и живой инспектор — см.
+   history.js. setData меняет САМ ОБЪЕКТ data (Undo/Redo подменяют
+   документ целиком), поэтому именно здесь, а не в touch(), растёт
+   documentEpoch — это ровно момент, когда прежняя версия документа
+   перестаёт быть актуальной. */
+const history = createHistory({
+  getData: () => data,
+  setData: next => { data = next; documentEpoch++; },
+  onChange: notifyChange,
+});
 const expandedProjects = new Set(['donerio']);
 /* Живой редактор создаётся один раз, при первой успешной load() —
    до этого момента data ещё нет и строить снимок для iframe не из чего */
@@ -45,10 +56,16 @@ async function start() {
     try { sessionStorage.setItem('portfolio-preview',JSON.stringify(buildPreviewPayload())); window.open('../?editor-preview=1','_blank'); }
     catch(err) {say(ui.saveState,err.message,'bar-state bar-state--bad')}
   });
-  el('undo').addEventListener('click',()=>{liveEditor?.flush();if(!history.length)return;data=JSON.parse(history.pop());documentEpoch++;lastState=serialize(data);render();setDirty(lastState!==saved);el('undo').disabled=!history.length;});
+  el('undo').addEventListener('click',()=>{if(history.undo())render();});
+  el('redo').addEventListener('click',()=>{if(history.redo())render();});
   el('importDraft').addEventListener('change',async e=>{
     const file=e.target.files[0];if(!file || busy)return;
-    try {if(file.size>2*1024*1024)throw Error('JSON больше 2 МБ.');const next=validateContent(JSON.parse(await file.text()));if(!confirm('Заменить текущий черновик содержимым файла?'))return;data=next;documentEpoch++;stampProjectIds();touch();render();}
+    try {
+      if(file.size>2*1024*1024)throw Error('JSON больше 2 МБ.');
+      const next=validateContent(JSON.parse(await file.text()));
+      if(!confirm('Заменить текущий черновик содержимым файла?'))return;
+      data=next;documentEpoch++;stampProjectIds();history.clear();setDirty(true);render();
+    }
     catch(err){say(ui.saveState,err.message,'bar-state bar-state--bad')} finally {e.target.value=''}
   });
   if(['localhost','127.0.0.1','[::1]'].includes(location.hostname)) {
@@ -56,14 +73,14 @@ async function start() {
     el('localDraft').addEventListener('click',async()=>{setBusy(true);try {local=true;await load();ui.gate.hidden=true;ui.editor.hidden=false;ui.barActions.hidden=false;ui.barRepo.hidden=false;ui.barRepo.textContent='Локальный черновик · без публикации';el('save').textContent='Скачать JSON';el('historyLink').hidden=true;}catch(err){ui.gateError.textContent=err.message;local=false}finally{setBusy(false)}});
   }
   el('signOut').addEventListener('click', () => {
-    liveEditor?.flush();
+    history.commit();
     if (dirty && !confirm('Выйти и потерять несохранённые правки?')) return;
     try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('admin-token'); } catch { /* Хранилище может быть закрыто. */ }
     clearUploads(); github = null; data = null;
     location.reload();
   });
   el('reload').addEventListener('click', async () => {
-    liveEditor?.flush();
+    history.commit();
     if (dirty && !confirm('Перечитать и потерять несохранённые правки? Сначала можно скачать копию.')) return;
     setBusy(true);
     try { await load(); } catch (err) { say(ui.saveState, err.message, 'bar-state bar-state--bad'); }
@@ -107,14 +124,14 @@ async function load() {
   head = loaded.head; data = loaded.data; knownFiles = loaded.files; documentEpoch++;
   data.services ||= structuredClone(defaultServices);
   stampProjectIds();
-  saved = serialize(data); lastState=saved; history=[];el('undo').disabled=true; clearUploads();
+  saved = serialize(data); history.clear(); clearUploads();
   pendingImageJobs = 0;
   /* Один раз за сессию: до первой успешной load() строить снимок
      для iframe не из чего, а Reload не должен пересоздавать iframe
      заново — тогда пропала бы уже начатая правка в инспекторе */
   if (!liveEditor) liveEditor = initLiveEditor({
     mount: el('liveEditorMount'), model: { imageNames, safeName }, field, shrink, uploads, assetUrl,
-    touch, setDirty, render, buildPreviewPayload,
+    touch, commit: history.commit, render, buildPreviewPayload,
     setStatus: (message, bad) => say(ui.saveState, message, bad ? 'bar-state bar-state--bad' : 'bar-state'),
     getEpoch: () => documentEpoch, setImageJobsPending,
   });
@@ -131,7 +148,7 @@ function stampProjectIds() {
   for (const project of data.projects.projects) project.id ??= crypto.randomUUID();
 }
 async function save() {
-  liveEditor?.flush();
+  history.commit();
   if (!data || busy) return;
   if (pendingImageJobs > 0) { say(ui.saveState, 'Дождись обработки изображения — секунду.', 'bar-state bar-state--bad'); return; }
   setBusy(true);
@@ -146,7 +163,7 @@ async function save() {
     if (next === saved && !uploads.size) { setDirty(false); return; }
     head = await github.save(data, uploads, head);
     for (const name of uploads.keys()) knownFiles.add(`${SHOTS_DIR}/${name}.webp`);
-    saved = next; lastState=next; history=[];el('undo').disabled=true; clearUploads(); setDirty(false); render();
+    saved = next; history.clear(); clearUploads(); setDirty(false); render();
     say(ui.saveState, 'Сохранено одним коммитом. Обнови сайт через несколько минут: GitHub кеширует файлы. Сборка не требуется.', 'bar-state');
   } catch (err) { say(ui.saveState, err.message, 'bar-state bar-state--bad'); }
   finally { setBusy(false); }
@@ -158,7 +175,8 @@ function setBusy(value) {
   for (const id of ['reload','signOut','backup']) el(id).disabled = value;
   updateSaveEnabled();
   el('preview').disabled=value;
-  el('undo').disabled=value || !history.length;
+  el('undo').disabled=value || !history.canUndo();
+  el('redo').disabled=value || !history.canRedo();
   el('localDraft').disabled=value;
 }
 function exportBackup() {
@@ -409,10 +427,16 @@ function remove(i, list, title) {
 }
 
 /* export — переиспользуется живым редактором ради одной и той же
-   визуальной формы поля. opts.commit:'manual' — единственное, что
-   ему нужно сверх обычного поведения: не писать историю Undo на
-   каждую букву. Ни один существующий вызов эту опцию не передаёт,
-   поэтому для всех них ничего не меняется. */
+   визуальной формы поля и одной и той же истории. key — свежий объект
+   на каждый вызов field(): им транзакция отличает «эту же строку
+   печатают дальше» от «переключились на другую строку с тем же
+   названием», где склеивать историю было бы неправильно.
+
+   Коммит группируется по уходу фокуса; opts.debounceMs добавляет ещё
+   и коммит по паузе — нужно живому инспектору, где поле может долго
+   стоять в фокусе, пока человек смотрит на предпросмотр. Для старой
+   формы debounceMs не передаётся ни один существующий вызов, и её
+   поведение — коммит по блюру — не меняется. */
 export function field(label, value, onInput, opts = {}) {
   const wrap = document.createElement('label');
   wrap.className = 'field' + (opts.wide ? ' field--wide' : '') + (opts.compact ? ' field--compact' : '');
@@ -423,7 +447,10 @@ export function field(label, value, onInput, opts = {}) {
   if(opts.type==='number'){input.min='0';input.max='40';}
   input.value = value ?? '';
   input.spellcheck = opts.tag === 'textarea';
-  input.addEventListener('input', () => { onInput(input.value); if (opts.commit !== 'manual') touch(); });
+  /* Порядок важен: мутация данных обязана случиться ДО markDirty(),
+     иначе живой предпросмотр получил бы снимок со старым значением */
+  input.addEventListener('input', () => onInput(input.value));
+  wireTextCommit(history, input, {}, { debounceMs: opts.debounceMs });
 
   wrap.append(text('field-label', label), input);
   if (opts.hint) wrap.append(text('field-hint', opts.hint));
@@ -487,15 +514,29 @@ function add(kind) {
 
 /* ── Состояние ─────────────────────────────────────────── */
 
-/* Единственное место, куда стекаются мутации старой формы, select и
-   разовые действия (добавить/удалить/переставить/загрузить). Раньше
-   отсюда не было пути к живому предпросмотру — правка меняла data,
-   но iframe узнавал об этом только при случайном следующем render().
-   Теперь touch() сам толкает лёгкий снимок; полную перерисовку
-   инспектора при необходимости всё равно даёт render() → sync(). */
-function touch() { if(lastState){history.push(lastState);if(history.length>60)history.shift()} lastState=serialize(data);el('undo').disabled=!history.length;setDirty(true);liveEditor?.notify(data); }
+/* Атомарное действие: добавить, удалить, переставить, загрузить,
+   выбрать значение в select. Мутация уже случилась к моменту вызова —
+   history.touch() сравнивает текущие данные с последней контрольной
+   точкой напрямую, без промежуточного «снимка на старте», который и
+   не сработал бы: begin() пришлось бы вызывать ДО мутации, а на всех
+   этих местах мутация стоит раньше touch(). */
+function touch() { history.touch(); }
+
 function assetUrl(name){return name ? uploads.get(name)?.url || (local ? '../content/work/'+name+'.webp' : github.raw(SHOTS_DIR+'/'+name+'.webp',head)) : ''; }
 function button(label,action){const b=document.createElement('button');b.type='button';b.className='btn-ghost';b.textContent=label;b.addEventListener('click',action);return b;}
+
+/* Единственное место, куда история сообщает о любой мутации данных —
+   из старой формы, из живого инспектора или из самих Undo/Redo.
+   dirty считается сравнением с saved, а не отдельным флагом: правка,
+   которая в сумме вернулась к сохранённому виду (набрал — стёр),
+   не должна выглядеть несохранённой. */
+function notifyChange() {
+  if (!data) return;
+  setDirty(serialize(data) !== saved);
+  el('undo').disabled = busy || !history.canUndo();
+  el('redo').disabled = busy || !history.canRedo();
+  liveEditor?.notify(data);
+}
 
 function setDirty(value) {
   dirty = value;

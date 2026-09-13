@@ -2,10 +2,17 @@
    плюс инспектор выбранной карточки проекта.
 
    Родитель этого модуля — admin.js. Никакого импорта в обратную
-   сторону нет: всё, что нужно из admin.js (текущий data, история
-   Undo, конструктор поля, сжатие картинки), приходит параметром в
+   сторону нет: всё, что нужно из admin.js (текущий data, общая
+   история, конструктор поля, сжатие картинки), приходит параметром в
    initLiveEditor(), а не через import. Так граф модулей остаётся
    деревом, а не циклом.
+
+   Группировка ввода в одну запись Undo (пауза, уход фокуса, защита
+   от IME) здесь больше не своя — её делает history.js через field(),
+   которую передаёт admin.js. Раньше у этого модуля был собственный
+   pendingCommit/commitTimer специально для поля заголовка, а старая
+   форма вообще не уведомляла живой предпросмотр — теперь оба поля
+   работают через один и тот же механизм.
 
    Протокол сообщений — общий модуль bridge-protocol.js, читаемый и
    отсюда, и из app/src/lib/previewBridge.ts на стороне сайта. */
@@ -18,23 +25,21 @@ import {
 } from './bridge-protocol.js';
 
 const PREVIEW_URL = '../?editor-preview=1';
-/* Пауза, после которой пачка нажатий клавиш становится одной записью
-   Undo. Раньше — как будто её никто не печатал; чаще — Undo снова
-   откатывает по одной букве. */
-const COMMIT_DELAY_MS = 550;
 
 export function initLiveEditor({
-  mount, model, field, shrink, uploads, assetUrl, touch, setDirty, render,
+  mount, model, field, shrink, uploads, assetUrl, touch, commit, render,
   buildPreviewPayload, setStatus, getEpoch, setImageJobsPending,
 }) {
   const channelId = crypto.randomUUID();
   let data = null;
   let selectedSlug = null;
+  /* Ссылки на поля текущего инспектора — используются в
+     refreshInspectorValues() ниже, объявлены здесь, а не рядом с ней:
+     renderInspectorEmpty() читает их уже на старте функции. */
+  let titleInputEl = null;
+  let coverImgEl = null;
   let mode = 'select';
   let revision = 0;
-  let composing = false;
-  let commitTimer = 0;
-  let pendingCommit = false;
 
   /* Доставка изображений подтверждается ребёнком (applied), а не
      предполагается в момент отправки. sentAssetIds — то, что ребёнок
@@ -171,18 +176,36 @@ export function initLiveEditor({
     return data?.projects.projects.find(p => (p.id ?? p.slug) === targetKey);
   }
 
+  /* refreshInspectorValues() — точечное обновление полей текущего
+     инспектора (titleInputEl/coverImgEl объявлены выше). Без этого
+     правка того же проекта через старую форму (тоже мутирует ЭТОТ ЖЕ
+     project.title, но не проходит через render()) оставляла бы здесь
+     старый текст — а следующая же буква, напечатанная в инспекторе,
+     тихо затёрла бы ту чужую правку значением, отсчитанным от
+     устаревшего отображения. */
+  function refreshInspectorValues() {
+    if (!selectedSlug || inspector.contains(document.activeElement)) return;
+    const project = findProject(selectedSlug);
+    if (!project) return;
+    if (titleInputEl && titleInputEl.value !== (project.title ?? '')) titleInputEl.value = project.title ?? '';
+    if (coverImgEl) {
+      const src = assetUrl(project.cover);
+      if (coverImgEl.src !== src) coverImgEl.src = src;
+    }
+  }
+
   function onSelect(target) {
     if (!target || target.type !== 'project') return;
-    /* Смена выбора обязана сохранить незавершённую правку прежней
-       карточки, а не потерять её молча */
-    flush();
+    /* Смена выбора обязана зафиксировать незавершённую правку прежней
+       карточки как отдельный шаг истории, а не потерять её молча */
+    commit();
     selectedSlug = target.key;
     renderInspectorFor(selectedSlug);
   }
 
   function onEscape(e) {
     if (e.key !== 'Escape' || !selectedSlug) return;
-    flush();
+    commit();
     selectedSlug = null;
     renderInspectorEmpty();
   }
@@ -199,7 +222,7 @@ export function initLiveEditor({
 
   function setMode(next) {
     if (mode === next) return;
-    flush();
+    commit();
     mode = next;
     selectBtn.setAttribute('aria-pressed', String(mode === 'select'));
     inspectBtn.setAttribute('aria-pressed', String(mode === 'inspect'));
@@ -212,6 +235,8 @@ export function initLiveEditor({
 
   function renderInspectorEmpty() {
     inspector.replaceChildren();
+    titleInputEl = null;
+    coverImgEl = null;
     const hint = document.createElement('p');
     hint.className = 'live-inspector-hint';
     hint.textContent = mode === 'select'
@@ -241,23 +266,18 @@ export function initLiveEditor({
     heading.append(name, status);
     head.append(thumb, heading);
 
+    /* Группировка по паузе/уходу фокуса и защита от IME — внутри
+       field(), общие с любым полем старой формы. Эта функция только
+       мутирует данные; когда именно это станет записью в истории —
+       не её забота. */
     const titleField = field('Заголовок карточки', project.title, value => {
       /* targetKey, а не project: к моменту следующего keystroke
          текущий проект достаём заново, а не полагаемся на объект,
          захваченный в замыкании при открытии инспектора */
       const current = findProject(targetKey);
       if (current) current.title = value;
-      pushLiveEdit();
-    }, { wide: true, commit: 'manual' });
-    const titleInput = titleField.querySelector('input,textarea');
-    titleInput.addEventListener('blur', flush);
-    titleInput.addEventListener('compositionstart', () => {
-      composing = true;
-      /* Таймер, заведённый ДО начала композиции, не имеет права
-         сработать посреди набора через IME */
-      clearTimeout(commitTimer);
-    });
-    titleInput.addEventListener('compositionend', () => { composing = false; scheduleCommit(); });
+    }, { wide: true, debounceMs: 550 });
+    titleInputEl = titleField.querySelector('input,textarea');
 
     const coverField = document.createElement('div');
     coverField.className = 'field field--wide live-cover-field';
@@ -267,6 +287,7 @@ export function initLiveEditor({
     const coverImg = document.createElement('img');
     coverImg.alt = '';
     coverImg.src = assetUrl(project.cover);
+    coverImgEl = coverImg;
     const coverInput = document.createElement('input');
     coverInput.type = 'file';
     coverInput.accept = 'image/png,image/jpeg,image/webp';
@@ -284,7 +305,7 @@ export function initLiveEditor({
      контента без id, slug), а не сам объект и не DOM-элемент. Оба
      захватывались бы ДО await и после него могли устареть: проект
      могли удалить, переименовать или весь документ — заменить целиком
-     через Undo/Reload, пока файл ещё обрабатывался. */
+     через Undo/Redo/Перечитать, пока файл ещё обрабатывался. */
   async function replaceCover(targetKey, files) {
     const file = files?.[0];
     if (!file) return;
@@ -326,36 +347,10 @@ export function initLiveEditor({
     }
   }
 
-  function pushLiveEdit() {
-    if (!pendingCommit) setDirty(true);
-    pendingCommit = true;
-    pushSnapshot();
-    if (composing) return;
-    scheduleCommit();
-  }
-
-  function scheduleCommit() {
-    clearTimeout(commitTimer);
-    commitTimer = setTimeout(flush, COMMIT_DELAY_MS);
-  }
-
-  /* Фиксирует накопленную правку одной записью Undo. Вызывается по
-     паузе в печати, по уходу фокуса, при смене выбора и перед любым
-     действием тулбара (Сохранить/Отменить/Перечитать/Выйти) — иначе
-     последняя буква могла бы потеряться или попасть в историю уже
-     после того действия, к которому не относится. */
-  function flush() {
-    clearTimeout(commitTimer);
-    if (!pendingCommit) return;
-    pendingCommit = false;
-    touch();
-    render();
-  }
-
   return {
     /* Вызывается из render() каждый раз, когда data меняется откуда
        угодно — из этого же инспектора, из старой длинной формы или
-       из Undo. Один источник истины, один путь синхронизации. */
+       из Undo/Redo. Один источник истины, один путь синхронизации. */
     sync(nextData) {
       data = nextData;
       if (selectedSlug && !inspector.contains(document.activeElement)) renderInspectorFor(selectedSlug);
@@ -363,11 +358,11 @@ export function initLiveEditor({
     },
     /* Лёгкий путь: только протолкнуть новый снимок, без перестройки
        инспектора. Для правок, где структура формы не меняется —
-       обычное поле старой формы, select. */
+       обычное поле старой формы, select, или поле этого инспектора. */
     notify(nextData) {
       data = nextData;
+      refreshInspectorValues();
       pushSnapshot();
     },
-    flush,
   };
 }
