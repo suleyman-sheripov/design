@@ -1,0 +1,37 @@
+{
+  "next": 560,
+  "previous": 0,
+  "drag": 560,
+  "stickyClose": {
+    "x": 960.3125,
+    "y": 72,
+    "width": 83.6875,
+    "height": 44
+  },
+  "experienceBefore": [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+  ],
+  "experienceDuring": [
+    "1",
+    "0",
+    "0",
+    "0",
+    "0"
+  ],
+  "experienceAfter": [
+    "1",
+    "1",
+    "1",
+    "1",
+    "1"
+  ],
+  "noRaf": {
+    "inert": false,
+    "roleOpacity": "1",
+    "curtain": false
+  }
+}

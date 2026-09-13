@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Админка. Содержимое сайта</title>
+
+<link rel="icon" href="../assets/logo/favicon.svg" type="image/svg+xml">
+
+
+
+<link rel="stylesheet" href="../assets/fonts/fonts.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+
+<header class="bar">
+  <div class="bar-in">
+    <span class="bar-title">Содержимое сайта</span>
+    <span class="bar-repo" id="barRepo" hidden></span>
+    <div class="bar-actions" id="barActions" hidden>
+      <span class="bar-state" id="saveState" role="status" aria-live="polite"></span>
+      <button class="btn-ghost" id="preview" type="button">Предпросмотр ↗</button>
+      <button class="btn-ghost" id="undo" type="button" disabled>Отменить правку</button>
+      <button class="btn-ghost" id="backup" type="button">Скачать копию</button>
+      <button class="btn-ghost" id="reload" type="button">Перечитать</button>
+      <button class="btn-solid" id="save" type="button">Сохранить</button>
+      <button class="btn-ghost" id="signOut" type="button">Выйти</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ── Вход ────────────────────────────────────────────── -->
+  <section class="gate" id="gate">
+    <h1>Вход</h1>
+    <p class="gate-lead">
+      Ваше портфолио: тексты, работы, изображения и оформление. Вход через GitHub только для владельца репозитория. Сохранение создаёт один коммит с историей изменений.
+    </p>
+
+    <form id="gateForm" class="gate-form">
+      <label class="field">
+        <span class="field-label">Владелец</span>
+        <input id="owner" name="owner" required autocomplete="off" spellcheck="false">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Репозиторий</span>
+        <input id="repo" name="repo" required autocomplete="off" spellcheck="false">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Ветка</span>
+        <input id="branch" name="branch" required autocomplete="off" spellcheck="false">
+      </label>
+
+      <label class="field field--wide">
+        <span class="field-label">Токен GitHub</span>
+        <input id="token" name="token" type="password" required autocomplete="off" spellcheck="false">
+        <span class="field-hint">
+          Fine-grained token только на этот репозиторий, право
+          <b>Contents: Read and write</b>. Токен передаётся только api.github.com. Действует только до закрытия страницы. Токен не сохраняется в браузере или в файлах сайта.
+        </span>
+      </label>
+
+      <a id="createToken" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">Создать токен на GitHub ↗</a>
+      <div class="gate-foot">
+        <button class="btn-solid" type="submit">Войти</button>
+        <span class="err" id="gateError" role="alert"></span>
+      </div>
+    </form>
+    <button id="localDraft" class="btn-ghost" type="button" hidden>Открыть локальный черновик без публикации</button>
+    <p class="field-hint">Адрес редактора открыт, содержимое репозитория публично. Записывать изменения может только аккаунт с разрешением GitHub. Не передавайте токен другим людям.</p>
+  </section>
+
+  <!-- ── Редактор ────────────────────────────────────────── -->
+  <div id="editor" hidden>
+
+    <p class="note" id="loadState" role="status" aria-live="polite"></p>
+
+    <nav class="editor-nav" aria-label="Разделы редактора"><a href="#settings">Страница и стиль</a><a href="#cases">Кейсы</a><a href="#services">Услуги</a><a href="#profile">Контакты</a><a href="#experience">Опыт</a><a href="../" target="_blank" rel="noopener">Открыть сайт ↗</a></nav>
+
+    <section class="block" id="settings"><h2>Страница и оформление</h2><p class="note">Изменения видны в предпросмотре до сохранения. Логотип и авторская анимация сохраняют свою форму.</p><div class="grid" id="settingsFields"></div></section>
+    <section class="block" id="cases">
+      <div class="block-head">
+        <h2>Кейсы</h2>
+        <button class="btn-ghost" type="button" data-add="projects">Добавить кейс</button>
+      </div>
+      <div class="rows" id="projectRows"></div>
+      <p class="empty" id="projectsEmpty" hidden>Ни одного кейса. На сайте вместо ленты будет строка «работы ещё не выложены».</p>
+    </section>
+
+    <section class="block" id="services"><div class="block-head"><h2>Услуги и теги Hero</h2><button class="btn-ghost" type="button" data-add="services">Добавить услугу</button></div><div class="rows" id="serviceRows"></div><p id="servicesEmpty" hidden>Услуг пока нет.</p></section>
+    <section class="block" id="profile">
+      <h2>Контакты и подпись</h2>
+      <div class="grid" id="profileFields"></div>
+    </section>
+
+    <section class="block" id="experience">
+      <div class="block-head">
+        <h2>Где работал</h2>
+        <button class="btn-ghost" type="button" data-add="track">Добавить место</button>
+      </div>
+      <div class="rows" id="trackRows"></div>
+      <p class="empty" id="trackEmpty" hidden>Ни одного места. Добавь первое, иначе раздел на сайте не покажется.</p>
+    </section>
+
+
+
+    <section class="block"><h2>Резервная копия</h2><p class="note">Экспорт сохраняет JSON и новые картинки отдельно. Импорт JSON заменяет черновик; новые картинки при необходимости загрузите повторно. История опубликованного содержимого остаётся в GitHub.</p><label class="shot-add">Импортировать JSON<input id="importDraft" type="file" accept="application/json,.json"></label><a id="historyLink" target="_blank" rel="noopener noreferrer">История изменений ↗</a></section>
+  </div>
+</main>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+[
+  {
+    "input": "cover.webp",
+    "alt": "Интерфейс Billions Lottery"
+  },
+  {
+    "input": "01-flow.webp",
+    "alt": "Основной сценарий интерфейса Billions Lottery"
+  },
+  {
+    "input": "02-screens.webp",
+    "alt": "Экраны интерфейса Billions Lottery"
+  },
+  {
+    "input": "03-ui-kit.webp",
+    "alt": "Компоненты UI-кита Billions Lottery"
+  }
+]

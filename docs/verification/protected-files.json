@@ -1,0 +1,14 @@
+{
+  "app/src/components/Mark.tsx": {
+    "identical_after_line_ending_normalization": true,
+    "sha256_lf": "dce376daefdcaaa4461ba622b0eb80c8622d0893d510285821d0026f08cb0e6f"
+  },
+  "app/src/components/Lockup.tsx": {
+    "identical_after_line_ending_normalization": true,
+    "sha256_lf": "7b043ad4000486783aa4786c3aeea2cd3a248566ac8fcded0fa85f319397eb69"
+  },
+  "app/src/lib/introSim.ts": {
+    "identical_after_line_ending_normalization": true,
+    "sha256_lf": "ca595b881f7dbffb8501e12d1fdfe93f113be8b6043091fafa9c8a5780903251"
+  }
+}

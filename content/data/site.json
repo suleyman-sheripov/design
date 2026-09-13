@@ -1,0 +1,361 @@
+{
+  "profile": {
+    "name": "Сулейман Шерипов",
+    "role": "Графический и UI/UX дизайнер",
+    "focus": "фирменный стиль · упаковка · интерфейсы",
+    "city": "Минск",
+    "email": "suleyman.sheripov@icloud.com",
+    "phone": "+375 25 756 98 61",
+    "links": {
+      "behance": "https://behance.net/suleymasheripov",
+      "dribbble": "https://dribbble.com/kilus"
+    },
+    "facts": [
+      "Минск",
+      "Больше года на коммерческом фрилансе",
+      "50+ учеников на курсах"
+    ],
+    "track": [
+      {
+        "client": "Donerio",
+        "role": "Графический дизайнер",
+        "kind": "Фриланс",
+        "period": "06 - 07.2026",
+        "note": "Фирменный стиль фастфуда: афиши, макет уличного лайтбокса, оформление соцсетей"
+      },
+      {
+        "client": "Агро-Импульс · Dr. Green",
+        "role": "Дизайнер упаковки",
+        "kind": "Фриланс",
+        "period": "03 - 05.2026",
+        "note": "Айдентика «Агро-техно» и векторные макеты упаковки под флексопечать"
+      },
+      {
+        "client": "Pro IT",
+        "role": "Преподаватель дизайна",
+        "kind": "Детские IT-курсы",
+        "period": "2025 - 07.2026",
+        "note": "Собрал программу и вёл курс по UI/UX и графике, 50+ учеников"
+      },
+      {
+        "client": "Billions Lottery",
+        "role": "UI/UX дизайнер",
+        "kind": "Фриланс",
+        "period": "09 - 10.2025",
+        "note": "Интерфейс Telegram-стартапа с нуля, UI-кит на 50+ компонентов"
+      },
+      {
+        "client": "Beauty Lab",
+        "role": "UI/UX дизайнер",
+        "kind": "Учебный проект",
+        "period": "04 - 05.2025",
+        "note": "Сайт салона красоты: путь до записи сокращён до двух кликов"
+      }
+    ],
+    "tools": [
+      {
+        "name": "Figma",
+        "for": "интерфейсы, прототипы, UI-киты",
+        "logo": "assets/tools/figma.png"
+      },
+      {
+        "name": "Illustrator",
+        "for": "вектор и макеты под печать",
+        "logo": "assets/tools/illustrator.png"
+      },
+      {
+        "name": "Photoshop",
+        "for": "растр, мокапы, ретушь",
+        "logo": "assets/tools/photoshop.png"
+      },
+      {
+        "name": "After Effects",
+        "for": "анимация и ролики",
+        "logo": "assets/tools/after-effects.png"
+      }
+    ]
+  },
+  "projects": {
+    "projects": [
+      {
+        "slug": "donerio",
+        "title": "Donerio",
+        "kind": "Фирменный стиль фастфуда",
+        "role": "Графический дизайнер",
+        "year": "",
+        "note": "Фирменный стиль фастфуда: афиши, макет уличного лайтбокса, оформление соцсетей",
+        "cover": "",
+        "ratio": "wide",
+        "shots": [],
+        "status": "draft",
+        "category": "commercial"
+      },
+      {
+        "slug": "dr-green",
+        "title": "Агро-Импульс · Dr. Green",
+        "kind": "Айдентика и упаковка",
+        "role": "Дизайнер упаковки",
+        "year": "",
+        "note": "Айдентика «Агро-техно» и векторные макеты упаковки под флексопечать",
+        "cover": "",
+        "ratio": "wide",
+        "shots": [],
+        "status": "draft",
+        "category": "commercial"
+      },
+      {
+        "slug": "pro-it",
+        "title": "Pro IT",
+        "kind": "Преподавание дизайна",
+        "role": "Преподаватель дизайна",
+        "year": "",
+        "note": "Собрал программу и вёл курс по UI/UX и графике, 50+ учеников",
+        "cover": "",
+        "ratio": "wide",
+        "shots": [],
+        "status": "draft",
+        "category": "teaching"
+      },
+      {
+        "slug": "billions-lottery",
+        "title": "Billions Lottery",
+        "kind": "Интерфейс Telegram-продукта",
+        "role": "UI/UX дизайнер",
+        "year": "",
+        "note": "Интерфейс Telegram-стартапа с нуля, UI-кит на 50+ компонентов",
+        "cover": "",
+        "ratio": "wide",
+        "shots": [],
+        "status": "draft",
+        "category": "commercial"
+      },
+      {
+        "slug": "beautylab",
+        "title": "Beauty Lab",
+        "kind": "Сайт салона красоты",
+        "role": "UI/UX",
+        "year": "2025",
+        "note": "Путь до записи сокращён до двух кликов: услуга выбирается прямо из каталога, а не через отдельную форму.",
+        "cover": "beautylab-1-main",
+        "ratio": "wide",
+        "shots": [
+          {
+            "file": "beautylab-1-main",
+            "alt": "Главная страница Beauty Lab"
+          },
+          {
+            "file": "beautylab-2-catalog",
+            "alt": "Каталог услуг Beauty Lab"
+          },
+          {
+            "file": "beautylab-3-service",
+            "alt": "Страница отдельной услуги Beauty Lab"
+          },
+          {
+            "file": "beautylab-4-contacts",
+            "alt": "Страница контактов Beauty Lab"
+          }
+        ],
+        "status": "published",
+        "category": "study"
+      },
+      {
+        "slug": "vasil",
+        "title": "Василь Шарангович",
+        "kind": "Сайт о художнике",
+        "role": "UI/UX",
+        "year": "",
+        "note": "",
+        "cover": "vasil-2-home",
+        "ratio": "wide",
+        "shots": [
+          {
+            "file": "vasil-1-intro",
+            "alt": "Первый экран сайта о Василе Шаранговиче"
+          },
+          {
+            "file": "vasil-2-home",
+            "alt": "Главная страница сайта о Василе Шаранговиче"
+          },
+          {
+            "file": "vasil-3-card",
+            "alt": "Страница отдельной картины"
+          },
+          {
+            "file": "vasil-4-works",
+            "alt": "Список работ художника"
+          }
+        ],
+        "status": "published",
+        "category": "personal"
+      },
+      {
+        "slug": "multivarka",
+        "title": "Мультиварка",
+        "kind": "Мобильный интерфейс прибора",
+        "role": "UI",
+        "year": "",
+        "note": "",
+        "cover": "multivarka-3-process",
+        "ratio": "tall",
+        "shots": [
+          {
+            "file": "multivarka-1-intro",
+            "alt": "Стартовый экран мультиварки"
+          },
+          {
+            "file": "multivarka-2-setup",
+            "alt": "Экран настройки готовки"
+          },
+          {
+            "file": "multivarka-3-process",
+            "alt": "Экран процесса готовки"
+          },
+          {
+            "file": "multivarka-4-settings",
+            "alt": "Экран настроек прибора"
+          }
+        ],
+        "status": "published",
+        "category": "personal"
+      },
+      {
+        "slug": "yotoys",
+        "title": "YoToys",
+        "kind": "Экран регистрации",
+        "role": "UI/UX",
+        "year": "",
+        "note": "",
+        "cover": "yotoys-2-screen",
+        "ratio": "wide",
+        "shots": [
+          {
+            "file": "yotoys-1-mockup",
+            "alt": "Мокап экрана регистрации YoToys"
+          },
+          {
+            "file": "yotoys-2-screen",
+            "alt": "Экран регистрации YoToys"
+          }
+        ],
+        "status": "published",
+        "category": "personal"
+      },
+      {
+        "slug": "checkout",
+        "title": "Оплата картой",
+        "kind": "Экран оплаты",
+        "role": "UI",
+        "year": "",
+        "note": "",
+        "cover": "checkout-2-screen",
+        "ratio": "tall",
+        "shots": [
+          {
+            "file": "checkout-2-screen",
+            "alt": "Экран ввода данных карты"
+          },
+          {
+            "file": "checkout-1-mockup",
+            "alt": "Мокап экрана оплаты на телефоне"
+          }
+        ],
+        "status": "published",
+        "category": "personal"
+      }
+    ]
+  },
+  "services": [
+    {
+      "id": "identity",
+      "title": "Айдентика",
+      "group": "brand",
+      "hero": true,
+      "detail": "Визуальная концепция бренда: цвет, типографика, графика и оформление носителей."
+    },
+    {
+      "id": "logos",
+      "title": "Логотипы",
+      "group": "brand",
+      "hero": true,
+      "detail": "Знак и шрифтовое начертание, версии для разных размеров и носителей."
+    },
+    {
+      "id": "packaging",
+      "title": "Упаковка",
+      "group": "brand",
+      "hero": true,
+      "detail": "Дизайн упаковки и векторные макеты, в том числе под флексопечать."
+    },
+    {
+      "id": "print",
+      "title": "Афиши и наружная реклама",
+      "group": "brand",
+      "hero": false,
+      "detail": "Афиши, печатная графика и макеты для уличных рекламных конструкций."
+    },
+    {
+      "id": "social",
+      "title": "Соцсети",
+      "group": "brand",
+      "hero": true,
+      "detail": "Оформление сообществ, шаблоны публикаций и рекламные материалы."
+    },
+    {
+      "id": "web",
+      "title": "Сайты",
+      "group": "digital",
+      "hero": true,
+      "detail": "Структура страниц и дизайн сайта: от первого экрана до целевого действия."
+    },
+    {
+      "id": "interfaces",
+      "title": "UI/UX",
+      "group": "digital",
+      "hero": true,
+      "detail": "Пользовательские сценарии и интерфейсы цифровых продуктов."
+    },
+    {
+      "id": "prototypes",
+      "title": "Прототипы",
+      "group": "digital",
+      "hero": true,
+      "detail": "Связанные экраны в Figma, чтобы проверить сценарий до разработки."
+    },
+    {
+      "id": "uikits",
+      "title": "UI-киты",
+      "group": "digital",
+      "hero": true,
+      "detail": "Компоненты, состояния и правила оформления для передачи разработчику."
+    },
+    {
+      "id": "marketplace",
+      "title": "Карточки товаров",
+      "group": "visual",
+      "hero": false,
+      "detail": "Изображения и инфографика для карточек на маркетплейсах."
+    },
+    {
+      "id": "presentations",
+      "title": "Презентации",
+      "group": "visual",
+      "hero": true,
+      "detail": "Композиция слайдов, типографика и наглядная подача материала."
+    },
+    {
+      "id": "mockups",
+      "title": "Мокапы и ретушь",
+      "group": "visual",
+      "hero": false,
+      "detail": "Обработка изображений и визуализация дизайна на носителях."
+    },
+    {
+      "id": "motion",
+      "title": "Моушн-дизайн",
+      "group": "visual",
+      "hero": true,
+      "detail": "Анимация графики и ролики в After Effects."
+    }
+  ]
+}

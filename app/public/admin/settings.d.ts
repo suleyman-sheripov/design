@@ -1,0 +1,2 @@
+export const DEFAULT_SETTINGS: {workTitle:string;experienceTitle:string;servicesTitle:string;servicesIntro:string;heroWork:string;heroContact:string;contactLine1:string;contactLine2:string;contactNote:string;contactButton:string;resume:string;toolsLabel:string;showExperience:boolean;showServices:boolean;showRibbon:boolean;paper:string;surface:string;ink:string;accent:string;dot:string;previewStyle:string;cardRadius:number};
+export const SETTING_LABELS: Record<keyof typeof DEFAULT_SETTINGS,string>;

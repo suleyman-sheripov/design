@@ -1,0 +1,18 @@
+# Служебное окружение агента — в репозитории сайта ему не место
+.agents/
+.claude/skills/
+.claude/agents/
+.claude/settings.local.json
+skills-lock.json
+
+# Мусор ОС
+Thumbs.db
+.DS_Store
+.impeccable/
+
+# Сюда владелец кладёт подготовленные снимки для импорта
+materials/**/*.webp
+materials/**/*.png
+materials/**/*.jpg
+# Локальные протоколы браузера и служебные файлы
+app/.env.local

@@ -1,0 +1,220 @@
+{
+  "viewports": [
+    {
+      "width": 320,
+      "height": 844,
+      "h1Top": 117.109375,
+      "h1Height": 122.84375,
+      "overflow": false,
+      "ctaBackground": "rgb(74, 93, 72)",
+      "ctaColor": "rgb(251, 247, 239)",
+      "heroHeight": 523.265625,
+      "dialogFocus": {
+        "color": "rgb(140, 168, 137)",
+        "width": "2px",
+        "style": "solid"
+      },
+      "baselineH1Top": 395.484375,
+      "heading": "- heading \"Привет, я Сулейман Шерипов, графический и ui/ux дизайнер.\" [level=1]"
+    },
+    {
+      "width": 360,
+      "height": 640,
+      "h1Top": 100.78125,
+      "h1Height": 93.921875,
+      "overflow": false,
+      "ctaBackground": "rgb(74, 93, 72)",
+      "ctaColor": "rgb(251, 247, 239)",
+      "heroHeight": 396.796875,
+      "dialogFocus": {
+        "color": "rgb(140, 168, 137)",
+        "width": "2px",
+        "style": "solid"
+      },
+      "baselineH1Top": 272.96875,
+      "heading": "- heading \"Привет, я Сулейман Шерипов, графический и ui/ux дизайнер.\" [level=1]"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "h1Top": 117.109375,
+      "h1Height": 93.921875,
+      "overflow": false,
+      "ctaBackground": "rgb(74, 93, 72)",
+      "ctaColor": "rgb(251, 247, 239)",
+      "heroHeight": 523.265625,
+      "dialogFocus": {
+        "color": "rgb(140, 168, 137)",
+        "width": "2px",
+        "style": "solid"
+      },
+      "baselineH1Top": 373.9375,
+      "heading": "- heading \"Привет, я Сулейман Шерипов, графический и ui/ux дизайнер.\" [level=1]"
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "h1Top": 486.328125,
+      "h1Height": 65,
+      "overflow": false,
+      "ctaBackground": "rgb(74, 93, 72)",
+      "ctaColor": "rgb(251, 247, 239)",
+      "heroHeight": 1024,
+      "dialogFocus": {
+        "color": "rgb(140, 168, 137)",
+        "width": "2px",
+        "style": "solid"
+      },
+      "baselineH1Top": 478.90625,
+      "heading": "- heading \"Привет, я Сулейман Шерипов, графический и ui/ux дизайнер.\" [level=1]"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "h1Top": 452.65625,
+      "h1Height": 91.5,
+      "overflow": false,
+      "ctaBackground": "rgb(74, 93, 72)",
+      "ctaColor": "rgb(251, 247, 239)",
+      "heroHeight": 900,
+      "dialogFocus": {
+        "color": "rgb(140, 168, 137)",
+        "width": "2px",
+        "style": "solid"
+      },
+      "baselineH1Top": 452.65625,
+      "heading": "- heading \"Привет, я Сулейман Шерипов, графический и ui/ux дизайнер.\" [level=1]"
+    },
+    {
+      "width": 1280,
+      "height": 600,
+      "h1Top": 302.953125,
+      "h1Height": 91.5,
+      "overflow": false,
+      "ctaBackground": "rgb(74, 93, 72)",
+      "ctaColor": "rgb(251, 247, 239)",
+      "heroHeight": 600,
+      "dialogFocus": {
+        "color": "rgb(140, 168, 137)",
+        "width": "2px",
+        "style": "solid"
+      },
+      "baselineH1Top": 302.953125,
+      "heading": "- heading \"Привет, я Сулейман Шерипов, графический и ui/ux дизайнер.\" [level=1]"
+    }
+  ],
+  "errors": [],
+  "frames": [
+    {
+      "raf": 77,
+      "ball": [
+        "translateX(-1.05em) translateY(-11em)",
+        "translateX(0.95em) translateY(-11em)",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "raf": 209,
+      "ball": [
+        "translateX(-1.05em) translateY(-11em)",
+        "translateX(0.95em) translateY(-11em)",
+        "none",
+        "rotate(1146.87deg)"
+      ]
+    },
+    {
+      "raf": 338,
+      "ball": [
+        "translateX(-1.05em) translateY(-11em)",
+        "translateX(0.95em)",
+        "none",
+        "rotate(1866.69deg)"
+      ]
+    },
+    {
+      "raf": 473,
+      "ball": [
+        "translateX(-1.05em)",
+        "translateX(0.95em)",
+        "none",
+        "rotate(2345.16deg)"
+      ]
+    },
+    {
+      "raf": 602,
+      "ball": [
+        "translateX(-0.212158em)",
+        "translateX(0.191953em)",
+        "none",
+        "rotate(2177.84deg)"
+      ]
+    },
+    {
+      "raf": 734,
+      "ball": [
+        "translateX(-4.30074e-12em)",
+        "translateX(3.89115e-12em)",
+        "none",
+        "rotate(2131.02deg)"
+      ]
+    },
+    {
+      "raf": 863,
+      "ball": [
+        "none",
+        "none",
+        "scale(0.566587)",
+        "rotate(2132.28deg)"
+      ]
+    }
+  ],
+  "replay": {
+    "mainInert": true,
+    "focusRestored": true
+  },
+  "runtimeUpdate": true,
+  "fallback": true,
+  "admin": {
+    "atomic": true,
+    "tokenRemembered": false,
+    "requests": [
+      {
+        "endpoint": "/git/ref/heads/main",
+        "method": "GET"
+      },
+      {
+        "endpoint": "/contents/content/data/site.json",
+        "method": "GET"
+      },
+      {
+        "endpoint": "/git/trees/old",
+        "method": "GET"
+      },
+      {
+        "endpoint": "/git/ref/heads/main",
+        "method": "GET"
+      },
+      {
+        "endpoint": "/git/commits/old",
+        "method": "GET"
+      },
+      {
+        "endpoint": "/git/blobs",
+        "method": "POST"
+      },
+      {
+        "endpoint": "/git/trees",
+        "method": "POST"
+      },
+      {
+        "endpoint": "/git/commits",
+        "method": "POST"
+      },
+      {
+        "endpoint": "/git/refs/heads/main",
+        "method": "PATCH"
+      }
+    ]
+  }
+}
