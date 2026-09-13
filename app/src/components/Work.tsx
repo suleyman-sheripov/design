@@ -33,7 +33,10 @@ export function Work({ projects, onOpen }: {projects: Project[]; onOpen: OpenPro
     if (!selecting) return handleProjectClick(e, p, onOpen)
     if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
     e.preventDefault()
-    bridge.select({ type: 'project', key: p.slug })
+    /* id, если он уже проставлен админкой, переживает переименование
+       slug в старой форме; для контента, ещё не пересохранённого через
+       обновлённую админку, id нет — тогда используем slug, как раньше */
+    bridge.select({ type: 'project', key: p.id ?? p.slug })
   }
 
   return <section id="work" className="work-exhibition" aria-labelledby="workTitle">
@@ -47,7 +50,7 @@ export function Work({ projects, onOpen }: {projects: Project[]; onOpen: OpenPro
           className={`exhibit-link ${selecting ? 'is-edit-target' : ''}`}
           href={caseHref(p.slug)}
           data-case={p.slug}
-          data-edit-target={selecting ? `project:${p.slug}` : undefined}
+          data-edit-target={selecting ? `project:${p.id ?? p.slug}` : undefined}
           data-cursor={selecting ? undefined : 'link'}
           data-cursor-label={selecting ? undefined : 'Открыть'}
           onClick={e=>onCardClick(e,p)}

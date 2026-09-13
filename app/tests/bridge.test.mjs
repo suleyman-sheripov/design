@@ -1,0 +1,285 @@
+// Регрессии на четыре дефекта, подтверждённых внешним ревью коммита
+// 2680ed8 (см. docs/… и приложенный bridge-review-2680ed8.zip):
+// устаревшее завершение обработки изображения побеждало более новое
+// действие пользователя, замена черновика во время обработки не
+// отменяла устаревшую операцию, одна и та же картинка пересылалась
+// заново на каждую букву, а старая форма меняла документ, не
+// уведомляя живой предпросмотр. Здесь — тот же тип воспроизведения,
+// что в присланном reproduce.mjs, но против исправленного кода и с
+// перевёрнутыми ожиданиями: раньше «CONFIRMED» означало баг, теперь
+// проверяется, что дефект НЕ воспроизводится.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
+import { initLiveEditor } from '../public/admin/editor-live.js';
+import {
+  CHANNEL, isValidApplied, isValidInit, isValidModeMessage, isValidRevision,
+  isValidSelection, isValidSnapshot, looksLikeDraft, readEnvelope,
+} from '../public/admin/bridge-protocol.js';
+
+class Element {
+  children = []; handlers = {}; attrs = {}; value = '';
+  constructor(tag) {
+    this.tag = tag;
+    if (tag === 'iframe') { this.messages = []; this.contentWindow = { postMessage: msg => this.messages.push(msg) }; }
+  }
+  append(...items) { this.children.push(...items); }
+  replaceChildren(...items) { this.children = items; }
+  setAttribute(k, v) { this.attrs[k] = v; }
+  addEventListener(k, fn) { (this.handlers[k] ??= []).push(fn); }
+  querySelector() { return this.children.find(x => x.tag === 'input' || x.tag === 'textarea'); }
+  contains(node) { return this === node || this.children.some(c => c.contains?.(node)); }
+  fire(k, payload = {}) { return Promise.all((this.handlers[k] ?? []).map(fn => fn({ target: this, ...payload }))); }
+}
+const walk = e => [e, ...e.children.flatMap(walk)];
+
+/* Гарантированно медленный shrink: разрешается вручную через
+   pending.get(name)(), а не таймером — тест сам решает порядок
+   завершения, без гонки с реальным временем. */
+function harness(overrides = {}) {
+  const listeners = {};
+  globalThis.location = { origin: 'http://localhost' };
+  globalThis.sessionStorage = { setItem() {} };
+  globalThis.document = { createElement: tag => new Element(tag), activeElement: null };
+  globalThis.addEventListener = (k, fn) => (listeners[k] ??= []).push(fn);
+  globalThis.removeEventListener = () => {};
+
+  const mount = new Element('main'), uploads = new Map(), pending = new Map();
+  let current = {
+    profile: {}, projects: { projects: [{ id: 'p1', slug: 'beautylab', title: 'Beauty Lab', status: 'published', cover: 'original' }] },
+  };
+  let epoch = 0, commits = 0, imageJobs = 0, editor;
+
+  const shrink = file => new Promise(resolve => pending.set(file.name, () => resolve({ url: 'blob:' + file.name, blob: new Blob([file.name], { type: 'image/webp' }), bytes: new Uint8Array([1]) })));
+  const field = (label, value, change) => {
+    const wrapper = new Element('label'), input = new Element('input');
+    input.label = label; input.value = value;
+    input.addEventListener('input', () => change(input.value));
+    wrapper.append(input);
+    return wrapper;
+  };
+
+  editor = initLiveEditor({
+    mount,
+    model: { imageNames: d => d.projects.projects.map(p => p.cover) },
+    field, shrink, uploads,
+    assetUrl: name => uploads.get(name)?.url ?? name,
+    touch: () => { commits++; },
+    setDirty() {},
+    render: () => editor.sync(current),
+    buildPreviewPayload: () => ({ data: current }),
+    setStatus: message => { throw Error(message); },
+    getEpoch: () => epoch,
+    setImageJobsPending: delta => { imageJobs = Math.max(0, imageJobs + delta); },
+    ...overrides,
+  });
+  editor.sync(current);
+
+  const iframe = walk(mount).find(e => e.tag === 'iframe');
+  const send = data => { for (const fn of listeners.message ?? []) fn({ source: iframe.contentWindow, origin: location.origin, data }); };
+  send({ channel: CHANNEL, kind: 'ready' });
+  const channelId = iframe.messages.find(m => m.kind === 'init').channelId;
+  const select = key => send({ channel: CHANNEL, kind: 'selection', channelId, target: { type: 'project', key } });
+  select('p1');
+
+  return {
+    mount, iframe, uploads, pending, editor, channelId, send, select,
+    get current() { return current; },
+    get commits() { return commits; },
+    get imageJobs() { return imageJobs; },
+    /* Имитирует Undo/Reload/импорт: документ меняется целиком, эпоха
+       растёт — ровно то, что admin.js делает по-настоящему. */
+    replaceDraft() { current = structuredClone(current); epoch++; editor.sync(current); },
+    input: () => walk(mount).find(e => e.type === 'file'),
+    title: () => walk(mount).find(e => e.label === 'Заголовок карточки'),
+  };
+}
+
+test('Гонка загрузки: выбрали A, затем B — побеждает B, даже если A завершился позже', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'A' }]; const first = input.fire('change');
+  input.files = [{ name: 'B' }]; const second = input.fire('change');
+  h.pending.get('B')(); await second;
+  h.pending.get('A')(); await first;
+  const actual = h.uploads.get(h.current.projects.projects[0].cover).url;
+  assert.equal(actual, 'blob:B');
+});
+
+test('Замена черновика во время обработки: устаревшее завершение не пишет в новую версию', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'pending' }]; const operation = input.fire('change');
+  h.replaceDraft();
+  h.pending.get('pending')();
+  await operation;
+  assert.equal(h.current.projects.projects[0].cover, 'original');
+  assert.equal(h.uploads.size, 0, 'устаревшая загрузка не должна попасть в uploads');
+  assert.equal(h.commits, 0, 'устаревшее завершение не пишет фиктивную правку в историю');
+  assert.equal(h.imageJobs, 0, 'счётчик занятости корректно уменьшился в finally');
+});
+
+test('Публикация ждёт обработку изображения, а не проскакивает мимо неё', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'cover' }]; const operation = input.fire('change');
+  assert.equal(h.imageJobs, 1, 'занятость выставлена ДО завершения shrink, не после');
+  h.pending.get('cover')();
+  await operation;
+  assert.equal(h.imageJobs, 0);
+});
+
+test('Ошибка обработки снимает занятость и не трогает документ', async () => {
+  const statuses = [];
+  const h = harness({
+    shrink: () => Promise.reject(new Error('плохой файл')),
+    setStatus: message => statuses.push(message),
+  });
+  const input = h.input();
+  input.files = [{ name: 'bad' }];
+  await input.fire('change');
+  assert.equal(h.current.projects.projects[0].cover, 'original');
+  assert.equal(h.imageJobs, 0);
+  assert.equal(h.uploads.size, 0);
+  assert.deepEqual(statuses, ['плохой файл']);
+});
+
+test('Текст не пересылает уже отправленную картинку заново на каждую букву', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'cover' }]; const operation = input.fire('change');
+  h.pending.get('cover')(); await operation;
+  /* Загрузка сама по себе уже толкнула снимок с Blob — считаем его в
+     общем итоге, а не сбрасываем: вопрос в том, уйдёт ли Blob ещё раз
+     ПОСЛЕ этого, а не в том, ушёл ли он вообще ни разу. */
+  const beforeTyping = h.iframe.messages.length;
+
+  const title = h.title();
+  title.value = 'X'; await title.fire('input');
+  title.value = 'XY'; await title.fire('input');
+
+  const typingSnapshots = h.iframe.messages.slice(beforeTyping).filter(m => m.kind === 'snapshot');
+  assert.equal(typingSnapshots.length, 2, 'каждая буква всё равно толкает снимок документа');
+  assert.ok(typingSnapshots.every(m => !m.assets), 'но ни один из них не обязан нести уже отправленную картинку');
+
+  const allWithAsset = h.iframe.messages.filter(m => m.kind === 'snapshot' && Object.values(m.assets ?? {}).some(v => v instanceof Blob));
+  assert.equal(allWithAsset.length, 1, 'Blob обязан уйти один раз за всю последовательность, а не при каждом снимке');
+  h.editor.flush();
+});
+
+test('Картинка не переотправляется, пока используется; выходит из употребления и возвращается — пересылается заново', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'cover' }]; const operation = input.fire('change');
+  h.pending.get('cover')(); await operation;
+  const uploadedName = h.current.projects.projects[0].cover;
+  const firstSnapshot = h.iframe.messages.findLast(m => m.kind === 'snapshot');
+  assert.ok(firstSnapshot.assets, 'первый снимок после загрузки обязан нести Blob');
+
+  // Пока applied не пришёл, повторный толчок снимка не обязан слать Blob
+  // ещё раз — он уже "в пути", повторная отправка была бы лишней работой
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  assert.equal(h.iframe.messages.filter(m => m.kind === 'snapshot' && m.assets).length, 0);
+
+  // Подтверждаем получение — теперь картинка окончательно "у ребёнка"
+  h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId, revision: firstSnapshot.revision });
+
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  assert.equal(h.iframe.messages.filter(m => m.kind === 'snapshot' && m.assets).length, 0, 'подтверждённая картинка не пересылается, пока используется');
+
+  // Undo вернул исходную обложку — id вышел из употребления
+  h.current.projects.projects[0].cover = 'original';
+  h.editor.notify(h.current);
+
+  // Redo вернул её обратно — отметка "уже доставлено" для этого id не
+  // должна была пережить период, когда он не использовался
+  h.current.projects.projects[0].cover = uploadedName;
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  const resent = h.iframe.messages.filter(m => m.kind === 'snapshot' && Object.values(m.assets ?? {}).some(v => v instanceof Blob));
+  assert.equal(resent.length, 1, 'вернувшийся в употребление id обязан прийти снова');
+});
+
+test('Старое поле формы теперь уведомляет живой предпросмотр из touch()', async () => {
+  const h = harness();
+  h.iframe.messages.length = 0;
+
+  const admin = await readFile(new URL('../public/admin/admin.js', import.meta.url), 'utf8');
+  const fieldSource = admin.slice(admin.indexOf('export function field('), admin.indexOf('\nfunction select(')).replace('export function', 'function');
+  const touchSource = admin.match(/function touch\(\) \{[^\n]+/)[0];
+
+  const wrap = vm.runInNewContext(fieldSource + '\n' + touchSource + '\nfield("Имя","Old",value=>data.profile.name=value)', {
+    document: globalThis.document, data: h.current, history: [], lastState: JSON.stringify(h.current), serialize: JSON.stringify,
+    el: () => ({}), setDirty() {}, text: () => new Element('span'), liveEditor: h.editor,
+  });
+  const input = wrap.querySelector();
+  input.value = 'New';
+  await input.fire('input');
+
+  assert.equal(h.current.profile.name, 'New');
+  assert.ok(h.iframe.messages.length > 0, 'touch() обязан толкнуть снимок в живой предпросмотр');
+});
+
+test('select() тоже уведомляет живой предпросмотр через touch()', async () => {
+  const h = harness();
+  h.iframe.messages.length = 0;
+
+  const admin = await readFile(new URL('../public/admin/admin.js', import.meta.url), 'utf8');
+  const selectSource = admin.slice(admin.indexOf('function select('), admin.indexOf('\nfunction text('));
+  const touchSource = admin.match(/function touch\(\) \{[^\n]+/)[0];
+
+  const wrap = vm.runInNewContext(selectSource + '\n' + touchSource + '\nselect("Статус",["draft","published"],"draft",v=>data.status=v)', {
+    document: globalThis.document, data: h.current, history: [], lastState: JSON.stringify(h.current), serialize: JSON.stringify,
+    el: () => ({}), setDirty() {}, text: () => new Element('span'), liveEditor: h.editor,
+  });
+  const box = wrap.children.find(c => c.tag === 'select');
+  box.value = 'published';
+  await box.fire('change');
+
+  assert.equal(h.current.status, 'published');
+  assert.ok(h.iframe.messages.length > 0);
+});
+
+// ── Общий протокол (bridge-protocol.js) ──────────────────────────
+
+test('Протокол: конверт отсеивает постороннее сообщение и неполные поля', () => {
+  assert.equal(readEnvelope(null), null);
+  assert.equal(readEnvelope('строка'), null);
+  assert.equal(readEnvelope({ channel: 'чужой-канал', kind: 'init' }), null);
+  assert.equal(readEnvelope({ channel: CHANNEL, kind: 42 }), null);
+  assert.ok(readEnvelope({ channel: CHANNEL, kind: 'init' }));
+});
+
+test('Протокол: revision — только конечное неотрицательное целое', () => {
+  for (const bad of [-1, 1.5, NaN, Infinity, '3', null, undefined]) assert.equal(isValidRevision(bad), false);
+  for (const ok of [0, 1, 999]) assert.equal(isValidRevision(ok), true);
+});
+
+test('Протокол: looksLikeDraft допускает пустые строки, но не мусорную форму', () => {
+  assert.equal(looksLikeDraft({ profile: {}, projects: { projects: [] } }), true);
+  assert.equal(looksLikeDraft({ profile: {}, projects: { projects: [{ title: '' }] } }), true);
+  assert.equal(looksLikeDraft('да'), false);
+  assert.equal(looksLikeDraft({ profile: {}, projects: { projects: null } }), false);
+  assert.equal(looksLikeDraft({ projects: { projects: [] } }), false);
+});
+
+test('Протокол: init/snapshot/selection/mode/applied проверяют свою форму целиком', () => {
+  const doc = { profile: {}, projects: { projects: [] } };
+  assert.equal(isValidInit({ channelId: 'a', revision: 0, mode: 'select', document: doc }), true);
+  assert.equal(isValidInit({ channelId: '', revision: 0, mode: 'select', document: doc }), false);
+  assert.equal(isValidInit({ channelId: 'a', revision: -1, mode: 'select', document: doc }), false);
+  assert.equal(isValidInit({ channelId: 'a', revision: 0, mode: 'сломано', document: doc }), false);
+
+  assert.equal(isValidSnapshot({ channelId: 'a', revision: 1, mode: 'inspect', document: doc }), true);
+  assert.equal(isValidSnapshot({ channelId: 'a', revision: 1, mode: 'inspect', document: doc, assets: { x: 'не-blob' } }), false);
+  assert.equal(isValidSnapshot({ channelId: 'a', revision: 1, mode: 'inspect', document: doc, assets: { x: new Blob(['x'], { type: 'text/plain' }) } }), false);
+  assert.equal(isValidSnapshot({ channelId: 'a', revision: 1, mode: 'inspect', document: doc, assets: { x: new Blob(['x'], { type: 'image/webp' }) } }), true);
+
+  assert.equal(isValidModeMessage({ channelId: 'a', mode: 'select' }), true);
+  assert.equal(isValidModeMessage({ channelId: 'a', mode: 'что-то' }), false);
+
+  assert.equal(isValidSelection({ channelId: 'a', target: { type: 'project', key: 'p1' } }), true);
+  assert.equal(isValidSelection({ channelId: 'a', target: { type: 'project', key: '' } }), false);
+  assert.equal(isValidSelection({ channelId: 'a', target: { type: 'service', key: 'p1' } }), false);
+
+  assert.equal(isValidApplied({ channelId: 'a', revision: 2 }), true);
+  assert.equal(isValidApplied({ channelId: 'a', revision: -2 }), false);
+});

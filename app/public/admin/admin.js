@@ -15,6 +15,27 @@ const expandedProjects = new Set(['donerio']);
 /* Живой редактор создаётся один раз, при первой успешной load() —
    до этого момента data ещё нет и строить снимок для iframe не из чего */
 let liveEditor = null;
+/* Растёт при каждой ЦЕЛИКОМ новой версии документа: load(), Undo,
+   импорт JSON. Обычная правка поля data НЕ трогает эпоху — она меняет
+   тот же объект на месте, а не подменяет его. Живой редактор сверяет
+   эпоху до и после ожидания сжатия картинки: если документ успели
+   заменить целиком, пока файл обрабатывался, устаревшее завершение
+   не имеет права дописаться поверх уже другой версии. */
+let documentEpoch = 0;
+/* Сколько изображений сейчас обрабатывается живым редактором.
+   Публикация блокируется, пока это число больше нуля — иначе
+   «Сохранить» могло бы уйти раньше, чем закончится загрузка, и
+   отправить версию без ещё не прикреплённой картинки. */
+let pendingImageJobs = 0;
+function setImageJobsPending(delta) {
+  pendingImageJobs = Math.max(0, pendingImageJobs + delta);
+  updateSaveEnabled();
+  if (pendingImageJobs > 0) say(ui.saveState, 'Обрабатываю изображение…', 'bar-state');
+  else if (dirty) say(ui.saveState, 'Есть несохранённые правки', 'bar-state bar-state--warn');
+}
+function updateSaveEnabled() {
+  el('save').disabled = busy || !dirty || pendingImageJobs > 0;
+}
 
 start();
 async function start() {
@@ -24,10 +45,10 @@ async function start() {
     try { sessionStorage.setItem('portfolio-preview',JSON.stringify(buildPreviewPayload())); window.open('../?editor-preview=1','_blank'); }
     catch(err) {say(ui.saveState,err.message,'bar-state bar-state--bad')}
   });
-  el('undo').addEventListener('click',()=>{liveEditor?.flush();if(!history.length)return;data=JSON.parse(history.pop());lastState=serialize(data);render();setDirty(lastState!==saved);el('undo').disabled=!history.length;});
+  el('undo').addEventListener('click',()=>{liveEditor?.flush();if(!history.length)return;data=JSON.parse(history.pop());documentEpoch++;lastState=serialize(data);render();setDirty(lastState!==saved);el('undo').disabled=!history.length;});
   el('importDraft').addEventListener('change',async e=>{
     const file=e.target.files[0];if(!file || busy)return;
-    try {if(file.size>2*1024*1024)throw Error('JSON больше 2 МБ.');const next=validateContent(JSON.parse(await file.text()));if(!confirm('Заменить текущий черновик содержимым файла?'))return;data=next;touch();render();}
+    try {if(file.size>2*1024*1024)throw Error('JSON больше 2 МБ.');const next=validateContent(JSON.parse(await file.text()));if(!confirm('Заменить текущий черновик содержимым файла?'))return;data=next;documentEpoch++;stampProjectIds();touch();render();}
     catch(err){say(ui.saveState,err.message,'bar-state bar-state--bad')} finally {e.target.value=''}
   });
   if(['localhost','127.0.0.1','[::1]'].includes(location.hostname)) {
@@ -83,19 +104,36 @@ async function start() {
 }
 async function load() {
   const loaded = local ? await (async()=>{const r=await fetch('../content/data/site.json',{cache:'no-store'});if(!r.ok)throw Error('Локальные данные недоступны.');const data=validateContent(await r.json());return {data,head:'local',files:new Set(imageNames(data).map(n=>SHOTS_DIR+'/'+n+'.webp'))}})() : await github.load();
-  head = loaded.head; data = loaded.data; knownFiles = loaded.files;
+  head = loaded.head; data = loaded.data; knownFiles = loaded.files; documentEpoch++;
   data.services ||= structuredClone(defaultServices);
+  stampProjectIds();
   saved = serialize(data); lastState=saved; history=[];el('undo').disabled=true; clearUploads();
+  pendingImageJobs = 0;
   /* Один раз за сессию: до первой успешной load() строить снимок
      для iframe не из чего, а Reload не должен пересоздавать iframe
      заново — тогда пропала бы уже начатая правка в инспекторе */
-  if (!liveEditor) liveEditor = initLiveEditor({ mount: el('liveEditorMount'), model: { imageNames, safeName }, field, shrink, uploads, assetUrl, touch, setDirty, render, buildPreviewPayload, setStatus: (message, bad) => say(ui.saveState, message, bad ? 'bar-state bar-state--bad' : 'bar-state') });
+  if (!liveEditor) liveEditor = initLiveEditor({
+    mount: el('liveEditorMount'), model: { imageNames, safeName }, field, shrink, uploads, assetUrl,
+    touch, setDirty, render, buildPreviewPayload,
+    setStatus: (message, bad) => say(ui.saveState, message, bad ? 'bar-state bar-state--bad' : 'bar-state'),
+    getEpoch: () => documentEpoch, setImageJobsPending,
+  });
   render(); setDirty(false);
   say(ui.loadState, '', 'note');
+}
+/* Стабильная идентичность проекта для живого редактора: slug можно
+   переименовать прямо в форме ниже, а выбранная в инспекторе карточка
+   не должна теряться из-за этого. Не трогает уже сохранённые файлы —
+   id просто ещё одно поле объекта, validateContent его не отвергает
+   и не требует; для контента, ещё не прошедшего через эту версию
+   админки, sync/выбор используют slug как раньше, см. Work.tsx. */
+function stampProjectIds() {
+  for (const project of data.projects.projects) project.id ??= crypto.randomUUID();
 }
 async function save() {
   liveEditor?.flush();
   if (!data || busy) return;
+  if (pendingImageJobs > 0) { say(ui.saveState, 'Дождись обработки изображения — секунду.', 'bar-state bar-state--bad'); return; }
   setBusy(true);
   say(ui.saveState, 'Сохраняю содержимое и снимки…', 'bar-state');
   try {
@@ -117,7 +155,8 @@ function setBusy(value) {
   busy = value;
   ui.editor.inert = value;
   ui.gateForm.inert = value;
-  for (const id of ['save','reload','signOut','backup']) el(id).disabled = value || (id === 'save' && !dirty);
+  for (const id of ['reload','signOut','backup']) el(id).disabled = value;
+  updateSaveEnabled();
   el('preview').disabled=value;
   el('undo').disabled=value || !history.length;
   el('localDraft').disabled=value;
@@ -230,7 +269,7 @@ function projectRow(item, i, list) {
   const summary = document.createElement('summary');
   summary.append(text('project-name', item.title || 'Новый кейс'), text('project-status', item.status === 'published' ? 'На сайте' : 'Черновик'));
   fold.addEventListener('toggle', () => fold.open ? expandedProjects.add(item.slug) : expandedProjects.delete(item.slug));
-  entry.append(button('Дублировать как черновик',()=>{const clone=structuredClone(item);clone.slug=item.slug+'-copy-'+crypto.randomUUID().slice(0,6);clone.title+=' — копия';clone.status='draft';list.splice(i+1,0,clone);expandedProjects.add(clone.slug);touch();render()}));
+  entry.append(button('Дублировать как черновик',()=>{const clone=structuredClone(item);clone.id=crypto.randomUUID();clone.slug=item.slug+'-copy-'+crypto.randomUUID().slice(0,6);clone.title+=' — копия';clone.status='draft';list.splice(i+1,0,clone);expandedProjects.add(clone.slug);touch();render()}));
   fold.append(summary, entry);
   return fold;
 
@@ -436,6 +475,7 @@ function add(kind) {
     (data.profile.tools ||= []).push({ name: '', for: '', logo: '' });
   } else if (kind === 'projects') {
     (data.projects.projects ||= []).unshift({
+      id: crypto.randomUUID(),
       slug: '', title: '', kind: '', role: '', year: '', note: '',
       cover: '', ratio: 'wide', shots: [], status: 'draft', category: 'personal',
     });
@@ -447,17 +487,23 @@ function add(kind) {
 
 /* ── Состояние ─────────────────────────────────────────── */
 
-function touch() { if(lastState){history.push(lastState);if(history.length>60)history.shift()} lastState=serialize(data);el('undo').disabled=!history.length;setDirty(true); }
+/* Единственное место, куда стекаются мутации старой формы, select и
+   разовые действия (добавить/удалить/переставить/загрузить). Раньше
+   отсюда не было пути к живому предпросмотру — правка меняла data,
+   но iframe узнавал об этом только при случайном следующем render().
+   Теперь touch() сам толкает лёгкий снимок; полную перерисовку
+   инспектора при необходимости всё равно даёт render() → sync(). */
+function touch() { if(lastState){history.push(lastState);if(history.length>60)history.shift()} lastState=serialize(data);el('undo').disabled=!history.length;setDirty(true);liveEditor?.notify(data); }
 function assetUrl(name){return name ? uploads.get(name)?.url || (local ? '../content/work/'+name+'.webp' : github.raw(SHOTS_DIR+'/'+name+'.webp',head)) : ''; }
 function button(label,action){const b=document.createElement('button');b.type='button';b.className='btn-ghost';b.textContent=label;b.addEventListener('click',action);return b;}
 
 function setDirty(value) {
   dirty = value;
-  el('save').disabled = !value || busy;
-  if (value) say(ui.saveState, 'Есть несохранённые правки', 'bar-state bar-state--warn');
+  updateSaveEnabled();
+  if (value && !pendingImageJobs) say(ui.saveState, 'Есть несохранённые правки', 'bar-state bar-state--warn');
   /* Гасим только собственное предупреждение: сообщение об удачном
      сохранении или об ошибке должно остаться на экране */
-  else if (ui.saveState.classList.contains('bar-state--warn')) say(ui.saveState, '', 'bar-state');
+  else if (!value && ui.saveState.classList.contains('bar-state--warn')) say(ui.saveState, '', 'bar-state');
 }
 
 function say(node, message, className) {

@@ -7,21 +7,26 @@
    initLiveEditor(), а не через import. Так граф модулей остаётся
    деревом, а не циклом.
 
-   Протокол сообщений и его проверки происхождения зеркалят
-   app/src/lib/previewBridge.ts — это ДВА разных графа модулей
-   (public/ не собирается Vite, app/src собирается), общий файл
-   между ними завести нельзя без отдельного шага сборки, поэтому
-   протокол продублирован. CHANNEL — единственная строка, которая
-   обязана совпадать в обоих местах. */
+   Протокол сообщений — общий модуль bridge-protocol.js, читаемый и
+   отсюда, и из app/src/lib/previewBridge.ts на стороне сайта. */
 
-const CHANNEL = 'portfolio-editor-bridge/1';
+import {
+  CHANNEL,
+  isValidModeMessage,
+  isValidSelection,
+  readEnvelope,
+} from './bridge-protocol.js';
+
 const PREVIEW_URL = '../?editor-preview=1';
 /* Пауза, после которой пачка нажатий клавиш становится одной записью
    Undo. Раньше — как будто её никто не печатал; чаще — Undo снова
-   откатывает по одной букве, ровно то, что нужно было не допустить. */
+   откатывает по одной букве. */
 const COMMIT_DELAY_MS = 550;
 
-export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl, touch, setDirty, render, buildPreviewPayload, setStatus }) {
+export function initLiveEditor({
+  mount, model, field, shrink, uploads, assetUrl, touch, setDirty, render,
+  buildPreviewPayload, setStatus, getEpoch, setImageJobsPending,
+}) {
   const channelId = crypto.randomUUID();
   let data = null;
   let selectedSlug = null;
@@ -30,6 +35,28 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
   let composing = false;
   let commitTimer = 0;
   let pendingCommit = false;
+
+  /* Доставка изображений подтверждается ребёнком (applied), а не
+     предполагается в момент отправки. sentAssetIds — то, что ребёнок
+     точно получил; pendingAssetIds — то, что уже отправлено, но ответ
+     ещё не пришёл; pendingByRevision — какой именно набор id ушёл с
+     каким снимком, чтобы applied знал, что именно снять с ожидания.
+     Без этого 100 нажатий клавиши после одной загрузки картинки сто
+     раз пересылали бы тот же Blob и пересоздавали его object URL. */
+  let sentAssetIds = new Set();
+  let pendingAssetIds = new Set();
+  let pendingByRevision = new Map();
+
+  /* Гонка загрузки изображений: у каждой цели (проект + поле) своя
+     последовательность операций. Если пока shrink() ждал, для той же
+     цели выбрали другой файл — победить должен последний выбор, а не
+     тот, что раньше досчитался. documentEpoch снаружи (admin.js)
+     растёт при каждой ЦЕЛИКОМ новой версии документа (Undo, Redo,
+     Перечитать, импорт) — завершение, начатое до такой замены, не
+     имеет права дописаться поверх новой версии. */
+  const operationSeq = new Map();
+  const nextOperationId = key => { const id = (operationSeq.get(key) ?? 0) + 1; operationSeq.set(key, id); return id; };
+  const isLatestOperation = (key, id) => operationSeq.get(key) === id;
 
   const root = document.createElement('div');
   root.className = 'live-editor';
@@ -58,10 +85,8 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
 
   /* Первый кадр iframe стартует с тем же снимком черновика, что и
      кнопка «Предпросмотр» в новой вкладке — так на экране сразу
-     черновик, а не опубликованная версия, и это не вторая копия
-     логики, а тот же buildPreviewPayload(). Ошибку (например, ещё не
-     готовый к публикации черновик) показываем тем же статусом, что и
-     остальной редактор, и просто не грузим iframe в этом случае. */
+     черновик, а не опубликованная версия. Ошибку показываем тем же
+     статусом, что и остальной редактор, и просто не грузим iframe. */
   try {
     sessionStorage.setItem('portfolio-preview', JSON.stringify(buildPreviewPayload()));
     iframe.src = PREVIEW_URL;
@@ -72,37 +97,78 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
   function onMessage(e) {
     if (e.source !== iframe.contentWindow) return;
     if (e.origin !== location.origin) return;
-    const msg = e.data;
-    if (!msg || msg.channel !== CHANNEL) return;
-    if (msg.kind === 'ready') { sendInit(); return; }
+    const raw = readEnvelope(e.data);
+    if (!raw) return;
+
+    if (raw.kind === 'ready') { sendInit(); return; }
     /* Все сообщения после ready обязаны нести наш channelId: иначе
        перезагрузившийся ранее iframe мог бы прислать что-то от
        предыдущего подключения */
-    if (msg.channelId !== channelId) return;
-    if (msg.kind === 'selection') onSelect(msg.target);
+    if (raw.channelId !== channelId) return;
+
+    if (raw.kind === 'selection') { if (isValidSelection(raw)) onSelect(raw.target); return; }
+    if (raw.kind === 'applied') { onApplied(raw); return; }
+    /* mode шлём мы сами и не читаем назад — isValidModeMessage
+       используется на приёмнике (previewBridge.ts), здесь просто
+       не падаем на неизвестном kind */
   }
 
   function sendInit() {
     if (!data) return;
     revision++;
+    /* Новое подключение — прежние отметки «ребёнок это уже получил»
+       больше ничего не значат для НОВОГО ребёнка */
+    sentAssetIds = new Set();
+    pendingAssetIds = new Set();
+    pendingByRevision = new Map();
     iframe.contentWindow.postMessage({ channel: CHANNEL, kind: 'init', channelId, revision, mode, document: data }, location.origin);
-    /* init по протоколу не несёт картинки; если что-то уже загружено
-       в этой сессии до перезагрузки iframe (например, после смены
-       ширины окна), снимок следом сразу восполняет их */
     pushSnapshot();
+  }
+
+  function onApplied(raw) {
+    const rev = raw.revision;
+    const ids = pendingByRevision.get(rev);
+    if (!ids) return;
+    pendingByRevision.delete(rev);
+    for (const id of ids) { pendingAssetIds.delete(id); sentAssetIds.add(id); }
   }
 
   function pushSnapshot() {
     if (!data || !iframe.contentWindow) return;
     revision++;
-    iframe.contentWindow.postMessage({ channel: CHANNEL, kind: 'snapshot', channelId, revision, mode, document: data, assets: liveAssets() }, location.origin);
+
+    const used = liveAssetsInUse();
+    /* Id, переставший использоваться (например, Undo вернул старую
+       обложку), теряет отметку «уже отправлен»: если он понадобится
+       снова, ребёнок получит Blob заново, а не сломанную ссылку на
+       то, что сам же освободил у себя. */
+    for (const id of [...sentAssetIds]) if (!used.has(id)) sentAssetIds.delete(id);
+    for (const id of [...pendingAssetIds]) if (!used.has(id)) pendingAssetIds.delete(id);
+
+    const toSend = {};
+    for (const [id, image] of used) {
+      if (sentAssetIds.has(id) || pendingAssetIds.has(id)) continue;
+      toSend[id] = image.blob;
+    }
+    const sentThisTime = new Set(Object.keys(toSend));
+    for (const id of sentThisTime) pendingAssetIds.add(id);
+    if (sentThisTime.size) pendingByRevision.set(revision, sentThisTime);
+
+    iframe.contentWindow.postMessage({
+      channel: CHANNEL, kind: 'snapshot', channelId, revision, mode, document: data,
+      assets: sentThisTime.size ? toSend : undefined,
+    }, location.origin);
   }
 
-  function liveAssets() {
+  function liveAssetsInUse() {
     const used = new Set(model.imageNames(data));
-    const out = {};
-    for (const [name, image] of uploads) if (used.has(name) && image.blob) out[name] = image.blob;
-    return Object.keys(out).length ? out : undefined;
+    const out = new Map();
+    for (const [name, image] of uploads) if (used.has(name) && image.blob) out.set(name, image);
+    return out;
+  }
+
+  function findProject(targetKey) {
+    return data?.projects.projects.find(p => (p.id ?? p.slug) === targetKey);
   }
 
   function onSelect(target) {
@@ -137,7 +203,9 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
     mode = next;
     selectBtn.setAttribute('aria-pressed', String(mode === 'select'));
     inspectBtn.setAttribute('aria-pressed', String(mode === 'inspect'));
-    if (iframe.contentWindow) iframe.contentWindow.postMessage({ channel: CHANNEL, kind: 'mode', channelId, mode }, location.origin);
+    if (iframe.contentWindow && isValidModeMessage({ channelId, mode })) {
+      iframe.contentWindow.postMessage({ channel: CHANNEL, kind: 'mode', channelId, mode }, location.origin);
+    }
     if (mode === 'inspect') { selectedSlug = null; renderInspectorEmpty(); }
     else renderInspectorEmpty();
   }
@@ -152,8 +220,8 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
     inspector.append(hint);
   }
 
-  function renderInspectorFor(slug) {
-    const project = data?.projects.projects.find(p => p.slug === slug);
+  function renderInspectorFor(targetKey) {
+    const project = findProject(targetKey);
     if (!project) { renderInspectorEmpty(); return; }
 
     inspector.replaceChildren();
@@ -174,12 +242,21 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
     head.append(thumb, heading);
 
     const titleField = field('Заголовок карточки', project.title, value => {
-      project.title = value;
+      /* targetKey, а не project: к моменту следующего keystroke
+         текущий проект достаём заново, а не полагаемся на объект,
+         захваченный в замыкании при открытии инспектора */
+      const current = findProject(targetKey);
+      if (current) current.title = value;
       pushLiveEdit();
     }, { wide: true, commit: 'manual' });
     const titleInput = titleField.querySelector('input,textarea');
     titleInput.addEventListener('blur', flush);
-    titleInput.addEventListener('compositionstart', () => { composing = true; });
+    titleInput.addEventListener('compositionstart', () => {
+      composing = true;
+      /* Таймер, заведённый ДО начала композиции, не имеет права
+         сработать посреди набора через IME */
+      clearTimeout(commitTimer);
+    });
     titleInput.addEventListener('compositionend', () => { composing = false; scheduleCommit(); });
 
     const coverField = document.createElement('div');
@@ -194,7 +271,7 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
     coverInput.type = 'file';
     coverInput.accept = 'image/png,image/jpeg,image/webp';
     coverInput.setAttribute('aria-label', 'Заменить превью в подборке');
-    coverInput.addEventListener('change', () => replaceCover(project, coverInput.files, coverImg));
+    coverInput.addEventListener('change', () => { void replaceCover(targetKey, coverInput.files); coverInput.value = ''; });
     const coverHint = document.createElement('span');
     coverHint.className = 'field-hint';
     coverHint.textContent = 'Обложка кейса и галерея не меняются: у превью в подборке своя картинка.';
@@ -203,21 +280,49 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
     inspector.append(head, titleField, coverField);
   }
 
-  async function replaceCover(project, files, imgEl) {
+  /* targetKey — устойчивый идентификатор проекта (id или, для старого
+     контента без id, slug), а не сам объект и не DOM-элемент. Оба
+     захватывались бы ДО await и после него могли устареть: проект
+     могли удалить, переименовать или весь документ — заменить целиком
+     через Undo/Reload, пока файл ещё обрабатывался. */
+  async function replaceCover(targetKey, files) {
     const file = files?.[0];
     if (!file) return;
+
+    const opKey = targetKey + ':cover';
+    const opId = nextOperationId(opKey);
+    const epochAtStart = getEpoch();
+    setImageJobsPending(1);
+
+    let prepared = null;
+    let attached = false;
     try {
-      const image = await shrink(file);
-      const uploadName = project.slug + '-' + crypto.randomUUID();
-      uploads.set(uploadName, image);
+      prepared = await shrink(file);
+
+      /* Документ заменили целиком, пока файл сжимался (Undo, Redo,
+         Перечитать, импорт) — эта версия больше не актуальна */
+      if (getEpoch() !== epochAtStart) return;
+      /* Пока этот файл обрабатывался, для той же цели выбрали другой —
+         побеждает более поздний выбор пользователя, а не тот, что
+         раньше досчитался */
+      if (!isLatestOperation(opKey, opId)) return;
+      const project = findProject(targetKey);
+      if (!project) return; // цель удалена или переименована мимо targetKey
+
+      const uploadName = targetKey + '-' + crypto.randomUUID();
+      uploads.set(uploadName, prepared);
       project.cover = uploadName;
-      imgEl.src = image.url;
-      /* Замена файла — одно законченное действие, в отличие от
-         печати: коммитим сразу, без паузы */
+      attached = true;
+
+      /* Одно законченное действие — одна запись в истории Undo */
       touch();
       render();
+      if (selectedSlug === targetKey) renderInspectorFor(targetKey);
     } catch (err) {
       setStatus(err.message, true);
+    } finally {
+      if (prepared && !attached) URL.revokeObjectURL(prepared.url);
+      setImageJobsPending(-1);
     }
   }
 
@@ -254,6 +359,13 @@ export function initLiveEditor({ mount, model, field, shrink, uploads, assetUrl,
     sync(nextData) {
       data = nextData;
       if (selectedSlug && !inspector.contains(document.activeElement)) renderInspectorFor(selectedSlug);
+      pushSnapshot();
+    },
+    /* Лёгкий путь: только протолкнуть новый снимок, без перестройки
+       инспектора. Для правок, где структура формы не меняется —
+       обычное поле старой формы, select. */
+    notify(nextData) {
+      data = nextData;
       pushSnapshot();
     },
     flush,

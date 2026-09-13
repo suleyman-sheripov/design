@@ -1,0 +1,11 @@
+export const CHANNEL: string;
+export function looksLikeDraft(value: unknown): boolean;
+export function isValidRevision(value: unknown): boolean;
+export function isValidMode(value: unknown): boolean;
+export function readEnvelope(raw: unknown): Record<string, unknown> | null;
+export function isValidInit(raw: Record<string, unknown>): boolean;
+export function isValidAssetMap(assets: unknown): boolean;
+export function isValidSnapshot(raw: Record<string, unknown>): boolean;
+export function isValidModeMessage(raw: Record<string, unknown>): boolean;
+export function isValidSelection(raw: Record<string, unknown>): boolean;
+export function isValidApplied(raw: Record<string, unknown>): boolean;

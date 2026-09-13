@@ -28,6 +28,12 @@ export type Profile = {
 export type Shot = { file: string; alt: string }
 
 export type Project = {
+  /* Необязательное поле: админка проставляет его при загрузке
+     черновика и хранит стабильным на время сессии, даже если slug
+     потом переименуют. Опубликованный контент, ещё не пересохранённый
+     через обновлённую админку, id не несёт — тогда для идентичности
+     живого редактора используется slug, см. Work.tsx. */
+  id?: string
   status: 'draft' | 'published'
   category: 'commercial' | 'teaching' | 'study' | 'personal'
   slug: string
