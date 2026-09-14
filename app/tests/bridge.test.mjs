@@ -22,6 +22,8 @@ import {
 
 class Element {
   children = []; handlers = {}; attrs = {}; value = ''; open = false;
+  classList = { add() {}, remove() {} };
+  focus() { document.activeElement = this; }
   constructor(tag) {
     this.tag = tag;
     if (tag === 'iframe') { this.messages = []; this.contentWindow = { postMessage: msg => this.messages.push(msg) }; }
@@ -160,7 +162,8 @@ test('Ошибка обработки снимает занятость и не 
   assert.equal(h.current.projects.projects[0].cover, 'original');
   assert.equal(h.imageJobs, 0);
   assert.equal(h.uploads.size, 0);
-  assert.deepEqual(statuses, ['плохой файл']);
+  assert.deepEqual(statuses, []);
+  assert.equal(walk(h.mount).find(e => e.className === 'media-status').textContent, 'плохой файл');
 });
 
 test('Текст не пересылает уже отправленную картинку заново на каждую букву', async () => {

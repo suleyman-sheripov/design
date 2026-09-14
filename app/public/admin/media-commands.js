@@ -1,100 +1,52 @@
-/* Команды над изображением конкретной цели: Target = { projectId, slot }
-   для одиночного слота (cover, caseCover — оба поля вида
-   project[slot] = имя файла) либо { projectId, slot: 'gallery',
-   galleryItemId } для одного вхождения галереи. Ни DOM, ни iframe этот
-   модуль не знает — только document (через getData) и uploads; UI и
-   рассылку в live preview делает вызывающий код (editor-live.js), как
-   и раньше для одного-единственного replaceCover.
-
-   Защита от гонок — та же, что уже проверена ревью на replaceCover:
-   документ мог замениться целиком, пока файл сжимался (documentEpoch),
-   или для той же цели мог начаться более новый выбор — побеждает
-   последний выбор пользователя, а не то, что раньше досчиталось.
-   uploadForTarget() добавляет ТРЕТЬЮ причину отбросить устаревший
-   результат: необязательный isCancelled() — медиадиалог передаёт его,
-   чтобы закрытие диалога до завершения сжатия аннулировало операцию,
-   даже если документ и цель за это время не поменялись вовсе. */
-
-export function createMediaCommands({ findProject, uploads, safeName, shrink, getEpoch, setImageJobsPending, touch, setStatus }) {
-  const operationSeq = new Map();
-  const nextOperationId = key => { const id = (operationSeq.get(key) ?? 0) + 1; operationSeq.set(key, id); return id; };
-  const isLatestOperation = (key, id) => operationSeq.get(key) === id;
-
-  const opKeyFor = target => target.projectId + ':' + target.slot + (target.galleryItemId != null ? ':' + target.galleryItemId : '');
-
-  /* Куда именно записать имя файла: одиночный слот — просто поле
-     проекта; галерея — конкретное вхождение по устойчивому id, а не
-     по индексу (индекс за время await мог сдвинуться реордером). */
-  function applyToTarget(project, target, assetName) {
-    if (target.slot === 'gallery') {
-      const shot = (project.shots || []).find(s => s.id === target.galleryItemId);
-      if (!shot) return false;
-      shot.file = assetName;
-      return true;
-    }
-    project[target.slot] = assetName;
-    return true;
-  }
-
-  /* Синхронно: гонки здесь нет, применять/не применять решается сразу */
-  function selectExistingAsset(target, assetId) {
-    if (!assetId || !safeName(assetId)) return false;
+// All media mutations use the shared history and resolve targets after async work.
+export function createMediaCommands({ findProject, uploads, safeName, shrink, getEpoch, setImageJobsPending, commit, touch }) {
+  const operations = new Map();
+  const keyFor = t => JSON.stringify([t.projectId, t.slot, t.galleryItemId]);
+  const advance = key => { const id = (operations.get(key) || 0) + 1; operations.set(key, id); return id; };
+  const cancelled = () => ({ status: 'cancelled' });
+  function resolve(target) {
     const project = findProject(target.projectId);
-    if (!project) return false;
-    if (!applyToTarget(project, target, assetId)) return false;
-    touch();
-    return true;
+    if (!project) return null;
+    if (target.slot === 'cover' || target.slot === 'caseCover') return { object: project, key: target.slot };
+    if (target.slot !== 'gallery' || !target.galleryItemId) return null;
+    const shot = project.shots?.find(s => s.id === target.galleryItemId);
+    return shot ? { object: shot, key: 'file' } : null;
   }
-
+  function selectExistingAsset(target, assetId) {
+    if (!assetId || !safeName(assetId)) return cancelled();
+    const destination = resolve(target);
+    if (!destination) return cancelled();
+    advance(keyFor(target));
+    if (destination.object[destination.key] === assetId) return { status: 'unchanged' };
+    commit();
+    destination.object[destination.key] = assetId;
+    touch();
+    return { status: 'applied' };
+  }
   async function uploadForTarget(target, file, { isCancelled } = {}) {
-    if (!file) return false;
-    const opKey = opKeyFor(target);
-    const opId = nextOperationId(opKey);
-    const epochAtStart = getEpoch();
+    if (!file || !resolve(target)) return cancelled();
+    const key = keyFor(target), operation = advance(key), epoch = getEpoch();
+    const current = () => getEpoch() === epoch && operations.get(key) === operation && !isCancelled?.() && !!resolve(target);
+    let prepared, attached = false;
     setImageJobsPending(1);
-
-    /* setImageJobsPending(-1) обязан отработать РОВНО один раз, чем бы
-       ни закончилась функция — отсюда finally. Но для ошибки этого
-       недостаточно: setImageJobsPending сама пишет в ту же строку
-       статуса ("Обрабатываю…" → "Есть несохранённые правки"), и если
-       finally выполнится ПОСЛЕ setStatus(err.message), она тут же
-       затирает только что показанную причину ошибки — поймано живой
-       проверкой в браузере, а не тестом. jobDone() снимает занятость
-       заранее в catch, до текста ошибки, и не даёт finally сделать
-       это второй раз. */
-    let jobDone = false;
-    const finishJob = () => { if (!jobDone) { jobDone = true; setImageJobsPending(-1); } };
-
-    let prepared = null, attached = false;
     try {
       prepared = await shrink(file);
-
-      /* В таком порядке: сперва целиком новый документ, потом более
-         новый выбор для той же цели, потом — специфичная для
-         медиадиалога причина (например, диалог успели закрыть) */
-      if (getEpoch() !== epochAtStart) return false;
-      if (!isLatestOperation(opKey, opId)) return false;
-      if (isCancelled?.()) return false;
-
-      const project = findProject(target.projectId);
-      if (!project) return false; // цель удалена или переименована мимо targetKey
-
-      const uploadName = target.projectId + '-' + crypto.randomUUID();
-      uploads.set(uploadName, prepared);
-      if (!applyToTarget(project, target, uploadName)) { uploads.delete(uploadName); return false; }
+      if (!current()) return cancelled();
+      // Commit text immediately before the media mutation, not before await.
+      commit();
+      const destination = resolve(target);
+      const name = 'media-' + crypto.randomUUID();
+      uploads.set(name, prepared);
+      destination.object[destination.key] = name;
       attached = true;
-
       touch();
-      return true;
-    } catch (err) {
-      finishJob();
-      setStatus(err.message, true);
-      return false;
+      return { status: 'applied' };
+    } catch (error) {
+      return current() ? { status: 'error', message: error?.message || 'Не удалось обработать изображение.' } : cancelled();
     } finally {
       if (prepared && !attached) URL.revokeObjectURL(prepared.url);
-      finishJob();
+      setImageJobsPending(-1);
     }
   }
-
   return { selectExistingAsset, uploadForTarget };
 }

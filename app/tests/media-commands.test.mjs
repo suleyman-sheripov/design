@@ -23,6 +23,7 @@ function setup(overrides = {}) {
     shrink,
     getEpoch: () => epoch,
     setImageJobsPending: () => {},
+    commit() {},
     touch: () => touches++,
     setStatus: message => statuses.push(message),
     ...overrides,
@@ -42,7 +43,7 @@ function setup(overrides = {}) {
 test('selectExistingAsset: применяет существующее имя, не трогает uploads, коммитит одной записью', () => {
   const h = setup();
   const ok = h.commands.selectExistingAsset({ projectId: 'p1', slot: 'cover' }, 'shot-a');
-  assert.equal(ok, true);
+  assert.equal(ok.status, 'applied');
   assert.equal(h.project.cover, 'shot-a');
   assert.equal(h.uploads.size, 0, 'выбор уже существующего файла не создаёт новый бинарный аплоад');
   assert.equal(h.touches, 1);
@@ -50,9 +51,9 @@ test('selectExistingAsset: применяет существующее имя, �
 
 test('selectExistingAsset: отвергает небезопасное имя и несуществующую цель, не коммитит', () => {
   const h = setup();
-  assert.equal(h.commands.selectExistingAsset({ projectId: 'p1', slot: 'cover' }, '../evil'), false);
-  assert.equal(h.commands.selectExistingAsset({ projectId: 'p1', slot: 'cover' }, ''), false);
-  assert.equal(h.commands.selectExistingAsset({ projectId: 'ghost', slot: 'cover' }, 'shot-a'), false);
+  assert.equal(h.commands.selectExistingAsset({ projectId: 'p1', slot: 'cover' }, '../evil').status, 'cancelled');
+  assert.equal(h.commands.selectExistingAsset({ projectId: 'p1', slot: 'cover' }, '').status, 'cancelled');
+  assert.equal(h.commands.selectExistingAsset({ projectId: 'ghost', slot: 'cover' }, 'shot-a').status, 'cancelled');
   assert.equal(h.touches, 0);
   assert.equal(h.project.cover, 'original', 'ни одна из отвергнутых попыток не должна была изменить документ');
 });
@@ -60,9 +61,9 @@ test('selectExistingAsset: отвергает небезопасное имя и
 test('selectExistingAsset: применяется к вхождению галереи по устойчивому id, а не по индексу', () => {
   const h = setup();
   const ok = h.commands.selectExistingAsset({ projectId: 'p1', slot: 'gallery', galleryItemId: 's1' }, 'new-file');
-  assert.equal(ok, true);
+  assert.equal(ok.status, 'applied');
   assert.equal(h.project.shots[0].file, 'new-file');
-  assert.equal(h.commands.selectExistingAsset({ projectId: 'p1', slot: 'gallery', galleryItemId: 'ghost' }, 'x'), false, 'несуществующий id вхождения отклоняется');
+  assert.equal(h.commands.selectExistingAsset({ projectId: 'p1', slot: 'gallery', galleryItemId: 'ghost' }, 'x').status, 'cancelled', 'несуществующий id вхождения отклоняется');
 });
 
 test('uploadForTarget: гонка A → B — побеждает B, даже если A завершился позже', async () => {
@@ -82,7 +83,7 @@ test('uploadForTarget: документ заменили целиком, пок�
   h.replaceDocument();
   h.pending.get('pending')();
   const ok = await op;
-  assert.equal(ok, false);
+  assert.equal(ok.status, 'cancelled');
   assert.equal(h.project.cover, 'original');
   assert.equal(h.uploads.size, 0);
   assert.equal(h.touches, 0);
@@ -94,7 +95,7 @@ test('uploadForTarget: цель удалена, пока файл сжималс
   const op = h.commands.uploadForTarget(target, { name: 'pending' });
   h.deleteProject();
   h.pending.get('pending')();
-  assert.equal(await op, false);
+  assert.equal((await op).status, 'cancelled');
   assert.equal(h.touches, 0);
 });
 
@@ -105,7 +106,7 @@ test('uploadForTarget: isCancelled (диалог закрыли до завер�
   const op = h.commands.uploadForTarget(target, { name: 'pending' }, { isCancelled: () => cancelled });
   cancelled = true; // например, пользователь закрыл диалог или открыл заново для другого проекта
   h.pending.get('pending')();
-  assert.equal(await op, false);
+  assert.equal((await op).status, 'cancelled');
   assert.equal(h.project.cover, 'original');
   assert.equal(h.touches, 0);
 });
@@ -113,8 +114,8 @@ test('uploadForTarget: isCancelled (диалог закрыли до завер�
 test('uploadForTarget: ошибка shrink() снимает занятость через setStatus, не трогает документ', async () => {
   const h = setup({ shrink: () => Promise.reject(new Error('плохой файл')) });
   const ok = await h.commands.uploadForTarget({ projectId: 'p1', slot: 'cover' }, { name: 'bad' });
-  assert.equal(ok, false);
-  assert.deepEqual(h.statuses, ['плохой файл']);
+  assert.deepEqual(ok, {status: 'error', message: 'плохой файл'});
+  assert.deepEqual(h.statuses, []);
   assert.equal(h.project.cover, 'original');
 });
 
@@ -131,7 +132,8 @@ test('uploadForTarget: снятие занятости не затирает т�
     setImageJobsPending: delta => calls.push(['jobs', delta]),
     setStatus: message => calls.push(['status', message]),
   });
-  return h.commands.uploadForTarget({ projectId: 'p1', slot: 'cover' }, { name: 'bad' }).then(() => {
-    assert.deepEqual(calls, [['jobs', 1], ['jobs', -1], ['status', 'плохой файл']], 'снятие занятости обязано случиться ДО показа причины ошибки, а не после');
+  return h.commands.uploadForTarget({ projectId: 'p1', slot: 'cover' }, { name: 'bad' }).then(result => {
+    assert.deepEqual(calls, [['jobs', 1], ['jobs', -1]]);
+    assert.deepEqual(result, {status: 'error', message: 'плохой файл'});
   });
 });

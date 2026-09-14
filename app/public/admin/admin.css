@@ -554,3 +554,6 @@ html { scroll-behavior:smooth; scroll-padding-top:10rem; }
   .live-stage { grid-template-columns:1fr 320px; }
   .live-inspector { max-height:clamp(420px,60vh,640px); overflow-y:auto; }
 }
+
+
+.media-status--error { color: #a22e27; }

@@ -15,6 +15,7 @@ export function createMediaDialog({ mount, mediaLibrary, assetUrl }) {
   let onSelectExisting = null;
   let onUploadFile = null;
   let busy = false;
+  let restoreFocus = null;
 
   const dialogEl = document.createElement('dialog');
   dialogEl.className = 'media-dialog';
@@ -22,6 +23,8 @@ export function createMediaDialog({ mount, mediaLibrary, assetUrl }) {
   const head = document.createElement('div');
   head.className = 'media-dialog-head';
   const heading = document.createElement('h3');
+  heading.id = 'media-title-' + crypto.randomUUID();
+  dialogEl.setAttribute('aria-labelledby', heading.id);
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.className = 'btn-ghost';
@@ -78,11 +81,13 @@ export function createMediaDialog({ mount, mediaLibrary, assetUrl }) {
   /* Escape закрывает нативный <dialog> через событие cancel — до
      close. Ровно момент, когда пользователь осознанно отказался от
      диалога, а не просто он закрылся сам по себе после выбора. */
-  dialogEl.addEventListener('cancel', () => { session++; });
+  dialogEl.addEventListener('cancel', e => { e.preventDefault(); abandon(); });
+  dialogEl.addEventListener('keydown', e => { if (e.key === 'Escape') e.stopPropagation(); });
 
   function abandon() {
     session++;
     dialogEl.close();
+    restoreFocus?.();
   }
 
   /* Кнопки миниатюр держим в своём массиве, а не через querySelectorAll:
@@ -122,39 +127,53 @@ export function createMediaDialog({ mount, mediaLibrary, assetUrl }) {
       btn.append(img);
       btn.addEventListener('click', () => {
         session++; // выбор сделан — любая незавершённая загрузка из этой сессии больше не актуальна
-        onSelectExisting(currentTarget, name);
-        dialogEl.close();
+        try {
+          const result = onSelectExisting(currentTarget, name);
+          if (result.status === 'applied' || result.status === 'unchanged') abandon();
+          else showError(result.message || 'Изображение не выбрано. Открой окно заново.');
+        } catch (error) { showError(error?.message || 'Не удалось обновить предпросмотр.'); }
       });
       return btn;
     });
     grid.append(...gridButtons);
   }
 
-  function startUpload(file) {
+  function showError(message) {
+    status.textContent = message;
+    status.classList.add('media-status--error');
+  }
+
+  async function startUpload(file) {
     const sessionAtStart = session;
     setBusy(true);
     status.textContent = 'Готовлю изображение…';
-    return Promise.resolve(onUploadFile(currentTarget, file, { isCancelled: () => session !== sessionAtStart }))
-      .then(ok => {
-        if (session !== sessionAtStart) return; // диалог успели закрыть/переоткрыть — эта попытка уже неактуальна
-        setBusy(false);
-        status.textContent = '';
-        if (ok) dialogEl.close();
-        /* иначе ошибка уже показана через setStatus общей строкой
-           статуса админки — здесь просто снимаем «занятость» */
-      });
+    status.classList.remove('media-status--error');
+    try {
+      const result = await onUploadFile(currentTarget, file, { isCancelled: () => session !== sessionAtStart });
+      if (session !== sessionAtStart) return;
+      if (result.status === 'applied') abandon();
+      else if (result.status === 'error') showError(result.message);
+      else status.textContent = '';
+    } catch (error) {
+      if (session === sessionAtStart) showError(error?.message || 'Не удалось обновить предпросмотр.');
+    } finally {
+      if (session === sessionAtStart) setBusy(false);
+    }
   }
 
   return {
     /* label — что именно меняем, чтобы пользователь видел цель:
        например, «Превью в подборке — Beauty Lab» */
+    isOpen: () => dialogEl.open,
     open(target, label, handlers) {
+      restoreFocus = handlers.restoreFocus;
       currentTarget = target;
       onSelectExisting = handlers.onSelectExisting;
       onUploadFile = handlers.onUploadFile;
       session++;
       setBusy(false);
       status.textContent = '';
+      status.classList.remove('media-status--error');
       heading.textContent = label;
       search.value = '';
       renderGrid();
@@ -162,3 +181,4 @@ export function createMediaDialog({ mount, mediaLibrary, assetUrl }) {
     },
   };
 }
+

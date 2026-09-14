@@ -41,6 +41,7 @@ export function initLiveEditor({
      renderInspectorEmpty() читает их уже на старте функции. */
   let titleInputEl = null;
   let coverImgEl = null;
+  let coverReplaceEl = null;
   let mode = 'select';
   let revision = 0;
 
@@ -93,16 +94,18 @@ export function initLiveEditor({
      диалога — дополнительная, третья причина отбросить устаревший
      результат, см. media-dialog.js. */
   const mediaCommands = createMediaCommands({
-    findProject, uploads, safeName: model.safeName, shrink, getEpoch, setImageJobsPending, touch, setStatus,
+    findProject, uploads, safeName: model.safeName, shrink, getEpoch, setImageJobsPending, commit, touch,
   });
   const mediaDialog = createMediaDialog({ mount: root, mediaLibrary, assetUrl });
 
   function onSelectExisting(target, assetId) {
-    if (mediaCommands.selectExistingAsset(target, assetId)) render();
+    const result = mediaCommands.selectExistingAsset(target, assetId);
+    if (result.status === 'applied') render();
+    return result;
   }
   async function onUploadFile(target, file, opts) {
     const ok = await mediaCommands.uploadForTarget(target, file, opts);
-    if (ok) render();
+    if (ok.status === 'applied') render();
     return ok;
   }
 
@@ -229,7 +232,7 @@ export function initLiveEditor({
   }
 
   function onEscape(e) {
-    if (e.key !== 'Escape' || !selectedSlug) return;
+    if (e.key !== 'Escape' || !selectedSlug || mediaDialog.isOpen()) return;
     commit();
     selectedSlug = null;
     renderInspectorEmpty();
@@ -262,6 +265,7 @@ export function initLiveEditor({
     inspector.replaceChildren();
     titleInputEl = null;
     coverImgEl = null;
+    coverReplaceEl = null;
     const hint = document.createElement('p');
     hint.className = 'live-inspector-hint';
     hint.textContent = mode === 'select'
@@ -317,12 +321,13 @@ export function initLiveEditor({
     coverReplace.type = 'button';
     coverReplace.className = 'btn-ghost';
     coverReplace.textContent = 'Заменить';
+    coverReplaceEl = coverReplace;
     coverReplace.addEventListener('click', () => {
       const current = findProject(targetKey);
       mediaDialog.open(
         { projectId: targetKey, slot: 'cover' },
         'Превью в подборке — ' + (current?.title || 'без названия'),
-        { onSelectExisting, onUploadFile },
+        { onSelectExisting, onUploadFile, restoreFocus: () => coverReplaceEl?.focus() },
       );
     });
     const coverHint = document.createElement('span');
@@ -352,3 +357,4 @@ export function initLiveEditor({
     },
   };
 }
+
