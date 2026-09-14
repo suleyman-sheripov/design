@@ -268,6 +268,48 @@ test('Быстрый цикл remove → reuse ДО ack: устаревшее ap
   assert.equal(h.iframe.messages.filter(m => m.kind === 'snapshot' && Object.values(m.assets ?? {}).some(v => v instanceof Blob)).length, 1, 'после настоящего applied и нового цикла ухода из употребления id всё ещё переотправляется штатно');
 });
 
+test('Искажённое applied (нечисловой, отрицательный, отсутствующий revision) не роняет редактор и не мешает настоящему applied', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'cover' }]; const operation = input.fire('change');
+  h.pending.get('cover')(); await operation;
+  const firstSnapshot = h.iframe.messages.findLast(m => m.kind === 'snapshot');
+  assert.ok(firstSnapshot.assets, 'первый снимок после загрузки обязан нести Blob');
+
+  /* Раньше onApplied читал raw.revision напрямую, без isValidApplied.
+     Сравнение status===rev внутри уже устойчиво к типовым нестыковкам
+     (строка никогда не совпадёт с сохранённым числом), поэтому здесь
+     не поведенческая дыра, а недостающая симметрия с остальными
+     четырьмя видами сообщений — на случай, если onApplied когда-нибудь
+     станет менее строгим. Проверяем то, что честно можно проверить:
+     искажённые сообщения не роняют обработчик и не смешиваются с
+     настоящим подтверждением. */
+  assert.doesNotThrow(() => {
+    h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId, revision: 'не число' });
+    h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId, revision: -1 });
+    h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId });
+  });
+
+  // Пока не пришло настоящее подтверждение, картинка остаётся "в пути" —
+  // это уже проверено другим тестом; здесь достаточно, что искажённые
+  // сообщения не подменили это состояние на что-то другое
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  assert.equal(h.iframe.messages.filter(m => m.kind === 'snapshot' && m.assets).length, 0);
+
+  // Настоящее applied за верную ревизию по-прежнему принимается штатно:
+  // id выходит из употребления и возвращается — обязан прийти заново,
+  // ровно как в сценарии без единого искажённого сообщения
+  const uploadedName = Object.keys(firstSnapshot.assets)[0];
+  h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId, revision: firstSnapshot.revision });
+  h.current.projects.projects[0].cover = 'original';
+  h.editor.notify(h.current);
+  h.current.projects.projects[0].cover = uploadedName;
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  const resent = h.iframe.messages.filter(m => m.kind === 'snapshot' && Object.values(m.assets ?? {}).some(v => v instanceof Blob));
+  assert.equal(resent.length, 1, 'настоящее applied по-прежнему подтверждает доставку как обычно');
+});
+
 /* field()/touch()/select() в admin.js вырезаются как исходный текст и
    выполняются в песочнице — тот же приём, что в присланном
    reproduce.mjs. Раньше песочница подсовывала им плоский массив

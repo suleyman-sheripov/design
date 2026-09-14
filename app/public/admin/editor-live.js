@@ -19,6 +19,7 @@
 
 import {
   CHANNEL,
+  isValidApplied,
   isValidModeMessage,
   isValidSelection,
   readEnvelope,
@@ -122,7 +123,13 @@ export function initLiveEditor({
     if (raw.channelId !== channelId) return;
 
     if (raw.kind === 'selection') { if (isValidSelection(raw)) onSelect(raw.target); return; }
-    if (raw.kind === 'applied') { onApplied(raw); return; }
+    /* applied — единственное сообщение от ребёнка, форма которого не
+       проверялась: revision там раньше читался напрямую, без
+       isValidRevision. Практический риск был невелик (нечисловой
+       revision просто ни с чем не совпадёт внутри onApplied), но
+       остальные четыре вида сообщений проверяются ДО изменения
+       состояния — applied ничем не должен быть исключением. */
+    if (raw.kind === 'applied') { if (isValidApplied(raw)) onApplied(raw); return; }
     /* mode шлём мы сами и не читаем назад — isValidModeMessage
        используется на приёмнике (previewBridge.ts), здесь просто
        не падаем на неизвестном kind */
