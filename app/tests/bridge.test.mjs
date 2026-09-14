@@ -123,6 +123,7 @@ function harness(overrides = {}) {
       return walk(mount).find(e => e.tag === 'input' && e.type === 'file');
     },
     useCoverAsCaseBtn: () => walk(mount).find(e => e.tag === 'button' && e.textContent === 'Использовать превью'),
+    caseCoverReplaceBtn: () => walk(mount).filter(e => e.tag === 'button' && e.textContent === 'Заменить')[1],
     title: () => walk(mount).find(e => e.label === 'Заголовок карточки'),
   };
 }
@@ -456,6 +457,20 @@ test('Обложка кейса: «Использовать превью» сн�
 
   assert.equal(h.current.projects.projects[0].caseCover, undefined, 'caseCover обязана была очиститься');
   assert.equal(h.useCoverAsCaseBtn().disabled, true, 'нечего больше сбрасывать — кнопка снова недоступна');
+});
+
+test('Обложка кейса: «Использовать превью» переводит фокус на АКТУАЛЬНУЮ кнопку «Заменить», а не остаётся на отсоединённой (внешнее ревью 9a213e9, доводка п.3)', async () => {
+  const h = harness();
+  h.current.projects.projects[0].caseCover = 'explicit-case';
+  h.editor.sync(h.current);
+
+  const beforeClick = h.caseCoverReplaceBtn();
+  const useFallbackBtn = h.useCoverAsCaseBtn();
+  await useFallbackBtn.fire('click');
+
+  const afterClick = h.caseCoverReplaceBtn();
+  assert.notEqual(afterClick, beforeClick, 'render() после сброса обязан был пересоздать кнопку «Заменить» у обложки кейса — иначе тест ничего не проверяет');
+  assert.equal(document.activeElement, afterClick, 'фокус клавиатуры обязан вернуться на актуальную кнопку «Заменить», а не остаться на отсоединённой от DOM «Использовать превью»');
 });
 
 test('Обложка кейса: смена превью в подборке НЕ трогает явно назначенную caseCover', async () => {

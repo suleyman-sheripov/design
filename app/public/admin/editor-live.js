@@ -112,7 +112,14 @@ export function initLiveEditor({
     return ok;
   }
   function onUseCoverAsCase(target) {
-    if (mediaCommands.clearAsset(target).status === 'applied') render();
+    if (mediaCommands.clearAsset(target).status !== 'applied') return;
+    /* render() перестраивает весь инспектор — нажатая кнопка (которая
+       тут же станет disabled) отсоединяется от DOM. caseCoverReplaceEl
+       к этому моменту уже переприсвоен на АКТУАЛЬНУЮ кнопку «Заменить»
+       (renderInspectorFor делает это синхронно внутри render()), так
+       что фокус клавиатуры не проваливается в пустоту. */
+    render();
+    caseCoverReplaceEl?.focus();
   }
 
   renderInspectorEmpty();

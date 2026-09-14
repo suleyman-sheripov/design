@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMediaCommands } from '../public/admin/media-commands.js';
+import { createHistory } from '../public/admin/history.js';
 import { safeName } from '../public/admin/model.js';
 
 function setup(overrides = {}) {
@@ -67,11 +68,14 @@ test('selectExistingAsset: применяется к вхождению гале
 });
 
 test('clearAsset: снимает явную caseCover — слот падает на fallback (используется в инспекторе для «Использовать превью»)', () => {
-  const h = setup({
-    findProject: id => id === 'p1' ? { id: 'p1', slug: 'beautylab', title: 'Beauty Lab', cover: 'cover-a', caseCover: 'case-a', shots: [] } : undefined,
-  });
+  // findProject возвращает устойчивую ссылку на объект внутри h.data
+  // (см. setup() ниже), а не новый литерал на каждый вызов — иначе
+  // мутация никак не проверялась бы после возврата команды.
+  const h = setup();
+  h.project.caseCover = 'case-a';
   const result = h.commands.clearAsset({ projectId: 'p1', slot: 'caseCover' });
   assert.equal(result.status, 'applied');
+  assert.equal(h.project.caseCover, undefined, 'мутация обязана была реально снять caseCover с устойчивого объекта проекта');
   assert.equal(h.touches, 1);
 });
 
@@ -87,6 +91,19 @@ test('clearAsset: несуществующая цель — cancelled', () => {
   assert.equal(h.commands.clearAsset({ projectId: 'ghost', slot: 'caseCover' }).status, 'cancelled');
 });
 
+test('clearAsset: отказывается работать со слотами cover/gallery — не трогает данные и историю (внешнее ревью 9a213e9)', () => {
+  // cover обязателен — у него нет fallback, снимать нечем; вхождение
+  // галереи удаляется целиком отдельной командой, а не сводится к
+  // shot.file=undefined. Раньше clearAsset принимал любой target,
+  // который проходил через resolve(), включая эти два случая.
+  const h = setup();
+  assert.equal(h.commands.clearAsset({ projectId: 'p1', slot: 'cover' }).status, 'cancelled');
+  assert.equal(h.project.cover, 'original', 'cover не должен был измениться');
+  assert.equal(h.commands.clearAsset({ projectId: 'p1', slot: 'gallery', galleryItemId: 's1' }).status, 'cancelled');
+  assert.equal(h.project.shots[0].file, 'shot-a', 'вхождение галереи не должно было измениться');
+  assert.equal(h.touches, 0, 'ни одна из отклонённых попыток не должна была попасть в историю');
+});
+
 test('uploadForTarget: caseCover — тот же резолвер slot, что и cover, полностью проходит через ту же защиту', async () => {
   const h = setup();
   const target = { projectId: 'p1', slot: 'caseCover' };
@@ -97,6 +114,64 @@ test('uploadForTarget: caseCover — тот же резолвер slot, что �
   assert.equal(h.uploads.size, 1, 'ровно один новый бинарный аплоад для caseCover');
   assert.equal(h.uploads.get(h.project.caseCover).url, 'blob:case-photo', 'caseCover указывает на реально загруженный файл, cover не тронут');
   assert.equal(h.project.cover, 'original', 'cover не должен был измениться от загрузки caseCover');
+});
+
+test('cover → caseCover → сброс caseCover: три раздельных шага с НАСТОЯЩЕЙ историей — три Undo, три Redo (внешнее ревью 9a213e9)', () => {
+  // Раньше «раздельные записи Undo» проверялись счётчиком вызовов
+  // touch(), что не гарантирует ни правильный порядок отмены, ни то,
+  // что commit() действительно закрывает предыдущий шаг ДО следующей
+  // мутации. Здесь — настоящая createHistory поверх настоящего data.
+  let data = { projects: { projects: [{ id: 'p1', slug: 'beautylab', title: 'Beauty Lab', cover: 'original', shots: [] }] } };
+  const history = createHistory({ getData: () => data, setData: d => { data = d; }, onChange() {} });
+  const commands = createMediaCommands({
+    findProject: id => data.projects.projects.find(p => (p.id ?? p.slug) === id),
+    uploads: new Map(),
+    safeName,
+    shrink: () => Promise.reject(new Error('не используется в этом тесте')),
+    getEpoch: () => 0,
+    setImageJobsPending: () => {},
+    commit: history.commit,
+    touch: history.touch,
+  });
+  const project = () => data.projects.projects[0];
+
+  assert.equal(commands.selectExistingAsset({ projectId: 'p1', slot: 'cover' }, 'cover-a').status, 'applied');
+  assert.equal(project().cover, 'cover-a');
+  assert.equal(project().caseCover, undefined);
+
+  assert.equal(commands.selectExistingAsset({ projectId: 'p1', slot: 'caseCover' }, 'case-a').status, 'applied');
+  assert.equal(project().cover, 'cover-a', 'назначение caseCover не тронуло cover');
+  assert.equal(project().caseCover, 'case-a');
+
+  assert.equal(commands.clearAsset({ projectId: 'p1', slot: 'caseCover' }).status, 'applied');
+  assert.equal(project().cover, 'cover-a');
+  assert.equal(project().caseCover, undefined);
+  assert.equal(JSON.stringify(project()).includes('caseCover'), false, 'сериализация обязана была отбросить ключ целиком (undefined, не null/"")');
+
+  assert.equal(history.undo(), true, '1/3: отменяет именно сброс caseCover');
+  assert.equal(project().caseCover, 'case-a');
+  assert.equal(project().cover, 'cover-a');
+
+  assert.equal(history.undo(), true, '2/3: отменяет именно назначение caseCover');
+  assert.equal(project().caseCover, undefined);
+  assert.equal(project().cover, 'cover-a');
+
+  assert.equal(history.undo(), true, '3/3: отменяет именно назначение cover');
+  assert.equal(project().cover, 'original');
+  assert.equal(project().caseCover, undefined);
+  assert.equal(history.canUndo(), false, 'три шага записаны раздельно — после трёх Undo стек пуст');
+
+  assert.equal(history.redo(), true, '1/3: возвращает назначение cover');
+  assert.equal(project().cover, 'cover-a');
+  assert.equal(project().caseCover, undefined);
+
+  assert.equal(history.redo(), true, '2/3: возвращает назначение caseCover');
+  assert.equal(project().caseCover, 'case-a');
+
+  assert.equal(history.redo(), true, '3/3: возвращает сброс caseCover');
+  assert.equal(project().caseCover, undefined);
+  assert.equal(project().cover, 'cover-a');
+  assert.equal(history.canRedo(), false);
 });
 
 test('uploadForTarget: гонка A → B — побеждает B, даже если A завершился позже', async () => {

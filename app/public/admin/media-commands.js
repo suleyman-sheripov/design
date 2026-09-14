@@ -23,8 +23,12 @@ export function createMediaCommands({ findProject, uploads, safeName, shrink, ge
     touch();
     return { status: 'applied' };
   }
-  // Removes an explicit override (e.g. caseCover) so the slot falls back to its default (cover).
+  // Removes an explicit caseCover override so it falls back to cover. Not a
+  // general "clear any slot": cover is required (there is no fallback for
+  // it), and a gallery entry is removed as a whole entry (removeGalleryItem),
+  // not reduced to an empty file name.
   function clearAsset(target) {
+    if (target.slot !== 'caseCover') return cancelled();
     const destination = resolve(target);
     if (!destination) return cancelled();
     advance(keyFor(target));
