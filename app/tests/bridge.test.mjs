@@ -14,13 +14,14 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { initLiveEditor } from '../public/admin/editor-live.js';
 import { createHistory, wireTextCommit } from '../public/admin/history.js';
+import { safeName } from '../public/admin/model.js';
 import {
   CHANNEL, isValidApplied, isValidInit, isValidModeMessage, isValidRevision,
   isValidSelection, isValidSnapshot, looksLikeDraft, readEnvelope,
 } from '../public/admin/bridge-protocol.js';
 
 class Element {
-  children = []; handlers = {}; attrs = {}; value = '';
+  children = []; handlers = {}; attrs = {}; value = ''; open = false;
   constructor(tag) {
     this.tag = tag;
     if (tag === 'iframe') { this.messages = []; this.contentWindow = { postMessage: msg => this.messages.push(msg) }; }
@@ -32,6 +33,10 @@ class Element {
   querySelector() { return this.children.find(x => x.tag === 'input' || x.tag === 'textarea'); }
   contains(node) { return this === node || this.children.some(c => c.contains?.(node)); }
   fire(k, payload = {}) { return Promise.all((this.handlers[k] ?? []).map(fn => fn({ target: this, ...payload }))); }
+  /* <dialog> — реальный DOM даёт это бесплатно; мок изображает ровно
+     то, чем пользуется media-dialog.js: открыт/закрыт как факт. */
+  showModal() { this.open = true; }
+  close() { this.open = false; }
 }
 const walk = e => [e, ...e.children.flatMap(walk)];
 
@@ -68,7 +73,7 @@ function harness(overrides = {}) {
 
   editor = initLiveEditor({
     mount,
-    model: { imageNames: d => d.projects.projects.map(p => p.cover) },
+    model: { imageNames: d => d.projects.projects.map(p => p.cover), safeName },
     field, shrink, uploads,
     assetUrl: name => uploads.get(name)?.url ?? name,
     touch: () => { commits++; },
@@ -78,6 +83,7 @@ function harness(overrides = {}) {
     setStatus: message => { throw Error(message); },
     getEpoch: () => epoch,
     setImageJobsPending: delta => { imageJobs = Math.max(0, imageJobs + delta); },
+    mediaLibrary: () => [...uploads.keys()],
     ...overrides,
   });
   editor.sync(current);
@@ -97,13 +103,22 @@ function harness(overrides = {}) {
     /* Имитирует Undo/Reload/импорт: документ меняется целиком, эпоха
        растёт — ровно то, что admin.js делает по-настоящему. */
     replaceDraft() { current = structuredClone(current); epoch++; editor.sync(current); },
-    input: () => walk(mount).find(e => e.type === 'file'),
+    /* Обложка теперь меняется через диалог, а не через голый file-input
+       в инспекторе: сперва кнопка «Заменить» открывает диалог (внутри
+       вызывается mediaDialog.open(), который и подключает
+       onSelectExisting/onUploadFile), только после этого его
+       собственный input годится для загрузки. */
+    async input() {
+      const replaceBtn = walk(mount).find(e => e.tag === 'button' && e.textContent === 'Заменить');
+      await replaceBtn.fire('click');
+      return walk(mount).find(e => e.tag === 'input' && e.type === 'file');
+    },
     title: () => walk(mount).find(e => e.label === 'Заголовок карточки'),
   };
 }
 
 test('Гонка загрузки: выбрали A, затем B — побеждает B, даже если A завершился позже', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'A' }]; const first = input.fire('change');
   input.files = [{ name: 'B' }]; const second = input.fire('change');
   h.pending.get('B')(); await second;
@@ -113,7 +128,7 @@ test('Гонка загрузки: выбрали A, затем B — побеж
 });
 
 test('Замена черновика во время обработки: устаревшее завершение не пишет в новую версию', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'pending' }]; const operation = input.fire('change');
   h.replaceDraft();
   h.pending.get('pending')();
@@ -125,7 +140,7 @@ test('Замена черновика во время обработки: уст
 });
 
 test('Публикация ждёт обработку изображения, а не проскакивает мимо неё', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'cover' }]; const operation = input.fire('change');
   assert.equal(h.imageJobs, 1, 'занятость выставлена ДО завершения shrink, не после');
   h.pending.get('cover')();
@@ -139,7 +154,7 @@ test('Ошибка обработки снимает занятость и не 
     shrink: () => Promise.reject(new Error('плохой файл')),
     setStatus: message => statuses.push(message),
   });
-  const input = h.input();
+  const input = await h.input();
   input.files = [{ name: 'bad' }];
   await input.fire('change');
   assert.equal(h.current.projects.projects[0].cover, 'original');
@@ -149,7 +164,7 @@ test('Ошибка обработки снимает занятость и не 
 });
 
 test('Текст не пересылает уже отправленную картинку заново на каждую букву', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'cover' }]; const operation = input.fire('change');
   h.pending.get('cover')(); await operation;
   /* Загрузка сама по себе уже толкнула снимок с Blob — считаем его в
@@ -170,7 +185,7 @@ test('Текст не пересылает уже отправленную ка�
 });
 
 test('Картинка не переотправляется, пока используется; выходит из употребления и возвращается — пересылается заново', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'cover' }]; const operation = input.fire('change');
   h.pending.get('cover')(); await operation;
   const uploadedName = h.current.projects.projects[0].cover;
@@ -204,7 +219,7 @@ test('Картинка не переотправляется, пока испо�
 });
 
 test('Запоздалый applied для ревизии, чей id уже вышел из употребления, не помечает его доставленным (внешнее ревью коммита 9301130)', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'cover' }]; const operation = input.fire('change');
   h.pending.get('cover')(); await operation;
   const uploadedName = h.current.projects.projects[0].cover;
@@ -231,7 +246,7 @@ test('Запоздалый applied для ревизии, чей id уже вы�
 });
 
 test('Быстрый цикл remove → reuse ДО ack: устаревшее applied не подменяет состояние новой отправки', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'cover' }]; const operation = input.fire('change');
   h.pending.get('cover')(); await operation;
   const uploadedName = h.current.projects.projects[0].cover;
@@ -269,7 +284,7 @@ test('Быстрый цикл remove → reuse ДО ack: устаревшее ap
 });
 
 test('Искажённое applied (нечисловой, отрицательный, отсутствующий revision) не роняет редактор и не мешает настоящему applied', async () => {
-  const h = harness(), input = h.input();
+  const h = harness(), input = await h.input();
   input.files = [{ name: 'cover' }]; const operation = input.fire('change');
   h.pending.get('cover')(); await operation;
   const firstSnapshot = h.iframe.messages.findLast(m => m.kind === 'snapshot');

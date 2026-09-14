@@ -24,12 +24,14 @@ import {
   isValidSelection,
   readEnvelope,
 } from './bridge-protocol.js';
+import { createMediaCommands } from './media-commands.js';
+import { createMediaDialog } from './media-dialog.js';
 
 const PREVIEW_URL = '../?editor-preview=1';
 
 export function initLiveEditor({
   mount, model, field, shrink, uploads, assetUrl, touch, commit, render,
-  buildPreviewPayload, setStatus, getEpoch, setImageJobsPending,
+  buildPreviewPayload, setStatus, getEpoch, setImageJobsPending, mediaLibrary,
 }) {
   const channelId = crypto.randomUUID();
   let data = null;
@@ -63,17 +65,6 @@ export function initLiveEditor({
      не трогает. */
   let assetDelivery = new Map();
 
-  /* Гонка загрузки изображений: у каждой цели (проект + поле) своя
-     последовательность операций. Если пока shrink() ждал, для той же
-     цели выбрали другой файл — победить должен последний выбор, а не
-     тот, что раньше досчитался. documentEpoch снаружи (admin.js)
-     растёт при каждой ЦЕЛИКОМ новой версии документа (Undo, Redo,
-     Перечитать, импорт) — завершение, начатое до такой замены, не
-     имеет права дописаться поверх новой версии. */
-  const operationSeq = new Map();
-  const nextOperationId = key => { const id = (operationSeq.get(key) ?? 0) + 1; operationSeq.set(key, id); return id; };
-  const isLatestOperation = (key, id) => operationSeq.get(key) === id;
-
   const root = document.createElement('div');
   root.className = 'live-editor';
 
@@ -94,6 +85,26 @@ export function initLiveEditor({
 
   root.append(toolbar, stage);
   mount.append(root);
+
+  /* Команды не знают о DOM/диалоге; диалог не знает о документе/истории —
+     склеивает их onSelectExisting/onUploadFile ниже. Гонки внутри
+     uploadForTarget защищены так же, как раньше был защищён единственный
+     replaceCover (documentEpoch + per-target operation id); session
+     диалога — дополнительная, третья причина отбросить устаревший
+     результат, см. media-dialog.js. */
+  const mediaCommands = createMediaCommands({
+    findProject, uploads, safeName: model.safeName, shrink, getEpoch, setImageJobsPending, touch, setStatus,
+  });
+  const mediaDialog = createMediaDialog({ mount: root, mediaLibrary, assetUrl });
+
+  function onSelectExisting(target, assetId) {
+    if (mediaCommands.selectExistingAsset(target, assetId)) render();
+  }
+  async function onUploadFile(target, file, opts) {
+    const ok = await mediaCommands.uploadForTarget(target, file, opts);
+    if (ok) render();
+    return ok;
+  }
 
   renderInspectorEmpty();
   addEventListener('message', onMessage);
@@ -302,63 +313,24 @@ export function initLiveEditor({
     coverImg.alt = '';
     coverImg.src = assetUrl(project.cover);
     coverImgEl = coverImg;
-    const coverInput = document.createElement('input');
-    coverInput.type = 'file';
-    coverInput.accept = 'image/png,image/jpeg,image/webp';
-    coverInput.setAttribute('aria-label', 'Заменить превью в подборке');
-    coverInput.addEventListener('change', () => { void replaceCover(targetKey, coverInput.files); coverInput.value = ''; });
+    const coverReplace = document.createElement('button');
+    coverReplace.type = 'button';
+    coverReplace.className = 'btn-ghost';
+    coverReplace.textContent = 'Заменить';
+    coverReplace.addEventListener('click', () => {
+      const current = findProject(targetKey);
+      mediaDialog.open(
+        { projectId: targetKey, slot: 'cover' },
+        'Превью в подборке — ' + (current?.title || 'без названия'),
+        { onSelectExisting, onUploadFile },
+      );
+    });
     const coverHint = document.createElement('span');
     coverHint.className = 'field-hint';
     coverHint.textContent = 'Обложка кейса и галерея не меняются: у превью в подборке своя картинка.';
-    coverField.append(coverLabel, coverImg, coverInput, coverHint);
+    coverField.append(coverLabel, coverImg, coverReplace, coverHint);
 
     inspector.append(head, titleField, coverField);
-  }
-
-  /* targetKey — устойчивый идентификатор проекта (id или, для старого
-     контента без id, slug), а не сам объект и не DOM-элемент. Оба
-     захватывались бы ДО await и после него могли устареть: проект
-     могли удалить, переименовать или весь документ — заменить целиком
-     через Undo/Redo/Перечитать, пока файл ещё обрабатывался. */
-  async function replaceCover(targetKey, files) {
-    const file = files?.[0];
-    if (!file) return;
-
-    const opKey = targetKey + ':cover';
-    const opId = nextOperationId(opKey);
-    const epochAtStart = getEpoch();
-    setImageJobsPending(1);
-
-    let prepared = null;
-    let attached = false;
-    try {
-      prepared = await shrink(file);
-
-      /* Документ заменили целиком, пока файл сжимался (Undo, Redo,
-         Перечитать, импорт) — эта версия больше не актуальна */
-      if (getEpoch() !== epochAtStart) return;
-      /* Пока этот файл обрабатывался, для той же цели выбрали другой —
-         побеждает более поздний выбор пользователя, а не тот, что
-         раньше досчитался */
-      if (!isLatestOperation(opKey, opId)) return;
-      const project = findProject(targetKey);
-      if (!project) return; // цель удалена или переименована мимо targetKey
-
-      const uploadName = targetKey + '-' + crypto.randomUUID();
-      uploads.set(uploadName, prepared);
-      project.cover = uploadName;
-      attached = true;
-
-      /* Одно законченное действие — одна запись в истории Undo */
-      touch();
-      render();
-      if (selectedSlug === targetKey) renderInspectorFor(targetKey);
-    } catch (err) {
-      setStatus(err.message, true);
-    } finally {
-      if (prepared && !attached) URL.revokeObjectURL(prepared.url);
-      setImageJobsPending(-1);
-    }
   }
 
   return {

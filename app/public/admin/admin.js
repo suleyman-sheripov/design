@@ -133,7 +133,7 @@ async function load() {
     mount: el('liveEditorMount'), model: { imageNames, safeName }, field, shrink, uploads, assetUrl,
     touch, commit: history.commit, render, buildPreviewPayload,
     setStatus: (message, bad) => say(ui.saveState, message, bad ? 'bar-state bar-state--bad' : 'bar-state'),
-    getEpoch: () => documentEpoch, setImageJobsPending,
+    getEpoch: () => documentEpoch, setImageJobsPending, mediaLibrary,
   });
   render(); setDirty(false);
   say(ui.loadState, '', 'note');
@@ -191,6 +191,21 @@ function buildPreviewPayload() {
   return {data,images:Object.fromEntries([...uploads].map(([n,v])=>[n,v.url])),mediaBase:local?'':github.raw(SHOTS_DIR+'/')};
 }
 function clearUploads() { for (const value of uploads.values()) URL.revokeObjectURL(value.url); uploads.clear(); }
+/* Медиатека живого редактора: уже известные файлы репозитория (полный
+   список из GitHub — токен-режим — или только используемые в текущем
+   документе — локальный черновик, где вычитать всю папку нечем) плюс
+   то, что уже загружено в этой сессии. Считается заново при каждом
+   открытии диалога, а не кэшируется отдельным счётчиком — источник
+   истины один, knownFiles/uploads, как и просил разработчик. */
+function mediaLibrary() {
+  const names = new Set();
+  const prefix = SHOTS_DIR + '/', suffix = '.webp';
+  for (const path of knownFiles || []) {
+    if (path.startsWith(prefix) && path.endsWith(suffix)) names.add(path.slice(prefix.length, -suffix.length));
+  }
+  for (const name of uploads.keys()) names.add(name);
+  return [...names];
+}
 function download(name, blob) {
   const url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
@@ -344,6 +359,15 @@ function projectRow(item, i, list) {
     return card;
   }
 
+  /* Без epoch-проверки: в отличие от загрузок из живого инспектора
+     (editor-live.js/media-commands.js), эта функция держит setBusy(true)
+     на весь цикл, а busy делает #editor inert и явно блокирует
+     #undo/#redo/#reload (см. setBusy выше) — заменить документ целиком,
+     пока этот await ждёт, здесь физически нечем: все пути, которые могли
+     бы это сделать, сами заблокированы тем же busy. Живой инспектор
+     специально НЕ блокирует остальной интерфейс во время сжатия
+     картинки (чтобы не подвешивать Undo на секунды) — поэтому там
+     защита от гонок обязательна, а здесь была бы мёртвым кодом. */
   async function upload(files, target='gallery', index=0) {
     if (!files?.length || busy) return;
     if (!safeName(item.slug)) { say(ui.saveState, 'Сначала укажи ключ проекта латиницей.', 'bar-state bar-state--bad'); return; }
