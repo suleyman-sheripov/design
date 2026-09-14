@@ -75,7 +75,7 @@ function harness(overrides = {}) {
 
   editor = initLiveEditor({
     mount,
-    model: { imageNames: d => d.projects.projects.map(p => p.cover), safeName },
+    model: { imageNames: d => d.projects.projects.flatMap(p => [p.cover, p.caseCover].filter(Boolean)), safeName },
     field, shrink, uploads,
     assetUrl: name => uploads.get(name)?.url ?? name,
     touch: () => { commits++; },
@@ -115,6 +115,14 @@ function harness(overrides = {}) {
       await replaceBtn.fire('click');
       return walk(mount).find(e => e.tag === 'input' && e.type === 'file');
     },
+    /* Второй по счёту «Заменить» в дереве: «Превью в подборке» рендерится
+       раньше «Обложки кейса» в renderInspectorFor(). */
+    async caseCoverInput() {
+      const buttons = walk(mount).filter(e => e.tag === 'button' && e.textContent === 'Заменить');
+      await buttons[1].fire('click');
+      return walk(mount).find(e => e.tag === 'input' && e.type === 'file');
+    },
+    useCoverAsCaseBtn: () => walk(mount).find(e => e.tag === 'button' && e.textContent === 'Использовать превью'),
     title: () => walk(mount).find(e => e.label === 'Заголовок карточки'),
   };
 }
@@ -419,6 +427,64 @@ test('Группировка: несколько input подряд в одно�
   assert.equal(history.canRedo(), true);
   input.value = 'Совсем другое'; await input.fire('input');
   assert.equal(history.canRedo(), false, 'начатая новая правка стирает ветку Redo, даже если её ещё не закоммитили');
+});
+
+// ── Обложка кейса (caseCover) ─────────────────────────────────────
+
+function findMediaItem(h, nameFragment) {
+  return walk(h.mount).find(e => e.tag === 'button' && e.className === 'media-item' && e.attrs['aria-label']?.includes(nameFragment));
+}
+
+test('Обложка кейса: выбор существующего файла не трогает превью в подборке; отдельная кнопка «Использовать превью» становится доступна', async () => {
+  const h = harness();
+  h.uploads.set('case-photo', { url: 'blob:case-photo', blob: new Blob(['x']), bytes: new Uint8Array([1]) });
+  await h.caseCoverInput(); // открывает диалог с уже известным «case-photo» в медиатеке
+  await findMediaItem(h, 'case-photo').fire('click');
+
+  assert.equal(h.current.projects.projects[0].caseCover, 'case-photo');
+  assert.equal(h.current.projects.projects[0].cover, 'original', 'превью в подборке не должно было измениться');
+  assert.equal(h.useCoverAsCaseBtn().disabled, false, '«Использовать превью» обязана стать доступной, раз caseCover теперь назначена явно');
+});
+
+test('Обложка кейса: «Использовать превью» снимает явное назначение — обложка падает на превью; кнопка снова недоступна', async () => {
+  const h = harness();
+  h.current.projects.projects[0].caseCover = 'explicit-case';
+  h.editor.sync(h.current);
+
+  assert.equal(h.useCoverAsCaseBtn().disabled, false, 'явно назначенная caseCover — кнопка доступна с самого начала');
+  await h.useCoverAsCaseBtn().fire('click');
+
+  assert.equal(h.current.projects.projects[0].caseCover, undefined, 'caseCover обязана была очиститься');
+  assert.equal(h.useCoverAsCaseBtn().disabled, true, 'нечего больше сбрасывать — кнопка снова недоступна');
+});
+
+test('Обложка кейса: смена превью в подборке НЕ трогает явно назначенную caseCover', async () => {
+  const h = harness();
+  h.current.projects.projects[0].caseCover = 'explicit-case';
+  h.editor.sync(h.current);
+  h.uploads.set('new-cover-pick', { url: 'blob:new-cover-pick', blob: new Blob(['x']), bytes: new Uint8Array([1]) });
+
+  await h.input(); // «Заменить» у превью в подборке
+  await findMediaItem(h, 'new-cover-pick').fire('click');
+
+  assert.equal(h.current.projects.projects[0].cover, 'new-cover-pick');
+  assert.equal(h.current.projects.projects[0].caseCover, 'explicit-case', 'явная caseCover обязана была остаться нетронутой');
+});
+
+test('Обложка кейса: раздельные записи Undo для cover и caseCover', async () => {
+  const h = harness();
+  h.uploads.set('cover-pick', { url: 'blob:cover-pick', blob: new Blob(['x']), bytes: new Uint8Array([1]) });
+  h.uploads.set('case-pick', { url: 'blob:case-pick', blob: new Blob(['x']), bytes: new Uint8Array([1]) });
+
+  await h.input();
+  await findMediaItem(h, 'cover-pick').fire('click');
+  assert.equal(h.current.projects.projects[0].cover, 'cover-pick');
+
+  await h.caseCoverInput();
+  await findMediaItem(h, 'case-pick').fire('click');
+  assert.equal(h.current.projects.projects[0].caseCover, 'case-pick');
+
+  assert.equal(h.commits, 2, 'две раздельные атомарные правки — два вызова touch()');
 });
 
 // ── Общий протокол (bridge-protocol.js) ──────────────────────────

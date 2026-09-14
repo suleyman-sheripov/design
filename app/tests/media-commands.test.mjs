@@ -66,6 +66,39 @@ test('selectExistingAsset: применяется к вхождению гале
   assert.equal(h.commands.selectExistingAsset({ projectId: 'p1', slot: 'gallery', galleryItemId: 'ghost' }, 'x').status, 'cancelled', 'несуществующий id вхождения отклоняется');
 });
 
+test('clearAsset: снимает явную caseCover — слот падает на fallback (используется в инспекторе для «Использовать превью»)', () => {
+  const h = setup({
+    findProject: id => id === 'p1' ? { id: 'p1', slug: 'beautylab', title: 'Beauty Lab', cover: 'cover-a', caseCover: 'case-a', shots: [] } : undefined,
+  });
+  const result = h.commands.clearAsset({ projectId: 'p1', slot: 'caseCover' });
+  assert.equal(result.status, 'applied');
+  assert.equal(h.touches, 1);
+});
+
+test('clearAsset: уже пустая caseCover — unchanged, без записи в историю', () => {
+  const h = setup();
+  const result = h.commands.clearAsset({ projectId: 'p1', slot: 'caseCover' });
+  assert.equal(result.status, 'unchanged');
+  assert.equal(h.touches, 0);
+});
+
+test('clearAsset: несуществующая цель — cancelled', () => {
+  const h = setup();
+  assert.equal(h.commands.clearAsset({ projectId: 'ghost', slot: 'caseCover' }).status, 'cancelled');
+});
+
+test('uploadForTarget: caseCover — тот же резолвер slot, что и cover, полностью проходит через ту же защиту', async () => {
+  const h = setup();
+  const target = { projectId: 'p1', slot: 'caseCover' };
+  const op = h.commands.uploadForTarget(target, { name: 'case-photo' });
+  h.pending.get('case-photo')();
+  const result = await op;
+  assert.equal(result.status, 'applied');
+  assert.equal(h.uploads.size, 1, 'ровно один новый бинарный аплоад для caseCover');
+  assert.equal(h.uploads.get(h.project.caseCover).url, 'blob:case-photo', 'caseCover указывает на реально загруженный файл, cover не тронут');
+  assert.equal(h.project.cover, 'original', 'cover не должен был измениться от загрузки caseCover');
+});
+
 test('uploadForTarget: гонка A → B — побеждает B, даже если A завершился позже', async () => {
   const h = setup();
   const target = { projectId: 'p1', slot: 'cover' };

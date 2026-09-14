@@ -42,6 +42,9 @@ export function initLiveEditor({
   let titleInputEl = null;
   let coverImgEl = null;
   let coverReplaceEl = null;
+  let caseCoverImgEl = null;
+  let caseCoverReplaceEl = null;
+  let caseCoverUseFallbackEl = null;
   let mode = 'select';
   let revision = 0;
 
@@ -107,6 +110,9 @@ export function initLiveEditor({
     const ok = await mediaCommands.uploadForTarget(target, file, opts);
     if (ok.status === 'applied') render();
     return ok;
+  }
+  function onUseCoverAsCase(target) {
+    if (mediaCommands.clearAsset(target).status === 'applied') render();
   }
 
   renderInspectorEmpty();
@@ -220,6 +226,11 @@ export function initLiveEditor({
       const src = assetUrl(project.cover);
       if (coverImgEl.src !== src) coverImgEl.src = src;
     }
+    if (caseCoverImgEl) {
+      const src = assetUrl(project.caseCover || project.cover);
+      if (caseCoverImgEl.src !== src) caseCoverImgEl.src = src;
+    }
+    if (caseCoverUseFallbackEl) caseCoverUseFallbackEl.disabled = !project.caseCover;
   }
 
   function onSelect(target) {
@@ -266,6 +277,9 @@ export function initLiveEditor({
     titleInputEl = null;
     coverImgEl = null;
     coverReplaceEl = null;
+    caseCoverImgEl = null;
+    caseCoverReplaceEl = null;
+    caseCoverUseFallbackEl = null;
     const hint = document.createElement('p');
     hint.className = 'live-inspector-hint';
     hint.textContent = mode === 'select'
@@ -332,10 +346,47 @@ export function initLiveEditor({
     });
     const coverHint = document.createElement('span');
     coverHint.className = 'field-hint';
-    coverHint.textContent = 'Обложка кейса и галерея не меняются: у превью в подборке своя картинка.';
+    coverHint.textContent = 'Галерея не меняется. Обложка кейса — если для неё выбрана своя картинка; иначе кейс покажет это же превью.';
     coverField.append(coverLabel, coverImg, coverReplace, coverHint);
 
-    inspector.append(head, titleField, coverField);
+    const caseCoverField = document.createElement('div');
+    caseCoverField.className = 'field field--wide live-cover-field';
+    const caseCoverLabel = document.createElement('span');
+    caseCoverLabel.className = 'field-label';
+    caseCoverLabel.textContent = 'Обложка кейса';
+    const caseCoverImg = document.createElement('img');
+    caseCoverImg.alt = '';
+    caseCoverImg.src = assetUrl(project.caseCover || project.cover);
+    caseCoverImgEl = caseCoverImg;
+    const caseCoverActions = document.createElement('div');
+    caseCoverActions.className = 'live-cover-actions';
+    const caseCoverReplace = document.createElement('button');
+    caseCoverReplace.type = 'button';
+    caseCoverReplace.className = 'btn-ghost';
+    caseCoverReplace.textContent = 'Заменить';
+    caseCoverReplaceEl = caseCoverReplace;
+    caseCoverReplace.addEventListener('click', () => {
+      const current = findProject(targetKey);
+      mediaDialog.open(
+        { projectId: targetKey, slot: 'caseCover' },
+        'Обложка кейса — ' + (current?.title || 'без названия'),
+        { onSelectExisting, onUploadFile, restoreFocus: () => caseCoverReplaceEl?.focus() },
+      );
+    });
+    const caseCoverUseFallback = document.createElement('button');
+    caseCoverUseFallback.type = 'button';
+    caseCoverUseFallback.className = 'btn-ghost';
+    caseCoverUseFallback.textContent = 'Использовать превью';
+    caseCoverUseFallback.disabled = !project.caseCover;
+    caseCoverUseFallbackEl = caseCoverUseFallback;
+    caseCoverUseFallback.addEventListener('click', () => onUseCoverAsCase({ projectId: targetKey, slot: 'caseCover' }));
+    caseCoverActions.append(caseCoverReplace, caseCoverUseFallback);
+    const caseCoverHint = document.createElement('span');
+    caseCoverHint.className = 'field-hint';
+    caseCoverHint.textContent = 'Пока отдельная картинка не выбрана, кейс открывается тем же превью, что и подборка. Смена превью в этом случае меняет и обложку кейса.';
+    caseCoverField.append(caseCoverLabel, caseCoverImg, caseCoverActions, caseCoverHint);
+
+    inspector.append(head, titleField, coverField, caseCoverField);
   }
 
   return {

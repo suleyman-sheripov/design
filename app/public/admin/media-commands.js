@@ -23,6 +23,17 @@ export function createMediaCommands({ findProject, uploads, safeName, shrink, ge
     touch();
     return { status: 'applied' };
   }
+  // Removes an explicit override (e.g. caseCover) so the slot falls back to its default (cover).
+  function clearAsset(target) {
+    const destination = resolve(target);
+    if (!destination) return cancelled();
+    advance(keyFor(target));
+    if (!destination.object[destination.key]) return { status: 'unchanged' };
+    commit();
+    destination.object[destination.key] = undefined;
+    touch();
+    return { status: 'applied' };
+  }
   async function uploadForTarget(target, file, { isCancelled } = {}) {
     if (!file || !resolve(target)) return cancelled();
     const key = keyFor(target), operation = advance(key), epoch = getEpoch();
@@ -48,5 +59,5 @@ export function createMediaCommands({ findProject, uploads, safeName, shrink, ge
       setImageJobsPending(-1);
     }
   }
-  return { selectExistingAsset, uploadForTarget };
+  return { selectExistingAsset, uploadForTarget, clearAsset };
 }
