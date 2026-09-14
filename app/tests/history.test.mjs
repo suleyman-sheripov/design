@@ -164,6 +164,17 @@ test('Незавершённый ввод + Undo/Redo: Undo сам коммит�
   assert.equal(h.data.n, 42, 'Redo обязан вернуть именно то значение, что было набрано');
 });
 
+test('Пустая (без единой правки) открытая транзакция не блокирует Redo в другом месте', () => {
+  const h = setup();
+  h.data.n = 1; h.history.touch();
+  h.history.undo(); // canRedo() true, data.n=0
+
+  h.history.begin({}); // например, фокус зашёл в поле, но набрать ничего не успели
+  assert.equal(h.history.canRedo(), true, 'пустая транзакция сама по себе не прячет Redo');
+  assert.equal(h.history.redo(), true, 'commit() внутри redo() находит, что менять нечего, и не мешает самому Redo');
+  assert.equal(h.data.n, 1);
+});
+
 test('Незавершённый ввод в одном поле не теряется при Redo в другом: redo() сам коммитит его перед прыжком в будущее', () => {
   const h = setup();
   h.data.n = 1; h.history.touch();
