@@ -203,6 +203,71 @@ test('Картинка не переотправляется, пока испо�
   assert.equal(resent.length, 1, 'вернувшийся в употребление id обязан прийти снова');
 });
 
+test('Запоздалый applied для ревизии, чей id уже вышел из употребления, не помечает его доставленным (внешнее ревью коммита 9301130)', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'cover' }]; const operation = input.fire('change');
+  h.pending.get('cover')(); await operation;
+  const uploadedName = h.current.projects.projects[0].cover;
+  const firstSnapshot = h.iframe.messages.findLast(m => m.kind === 'snapshot');
+  assert.ok(firstSnapshot.assets, 'первый снимок после загрузки обязан нести Blob');
+  const staleRevision = firstSnapshot.revision;
+
+  // Id вышел из употребления ДО того, как подтверждение за первый снимок пришло
+  h.current.projects.projects[0].cover = 'original';
+  h.editor.notify(h.current);
+
+  // Запоздавшее applied за старую ревизию приходит уже после этого
+  h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId, revision: staleRevision });
+
+  // Id снова понадобился — раз ребёнок у себя его уже точно не хранит
+  // (сам же освободил object URL, когда id пропал из imageNames), Blob
+  // обязан прийти заново, а не потеряться из-за того, что запоздавший
+  // applied тихо пометил его «уже доставлен»
+  h.current.projects.projects[0].cover = uploadedName;
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  const resent = h.iframe.messages.filter(m => m.kind === 'snapshot' && Object.values(m.assets ?? {}).some(v => v instanceof Blob));
+  assert.equal(resent.length, 1, 'запоздавший applied не должен был помешать повторной отправке');
+});
+
+test('Быстрый цикл remove → reuse ДО ack: устаревшее applied не подменяет состояние новой отправки', async () => {
+  const h = harness(), input = h.input();
+  input.files = [{ name: 'cover' }]; const operation = input.fire('change');
+  h.pending.get('cover')(); await operation;
+  const uploadedName = h.current.projects.projects[0].cover;
+  const firstSnapshot = h.iframe.messages.findLast(m => m.kind === 'snapshot');
+  const staleRevision = firstSnapshot.revision;
+
+  // remove, затем reuse — оба ДО того, как applied за первую отправку пришёл
+  h.current.projects.projects[0].cover = 'original';
+  h.editor.notify(h.current);
+  h.current.projects.projects[0].cover = uploadedName;
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current); // должен переотправить Blob под НОВОЙ ревизией
+  const resend = h.iframe.messages.findLast(m => m.kind === 'snapshot' && m.assets);
+  assert.ok(resend, 'повторное использование обязано переотправить Blob');
+  const freshRevision = resend.revision;
+  assert.notEqual(freshRevision, staleRevision);
+
+  // Теперь приходит устаревшее applied за самую первую (уже неактуальную) ревизию
+  h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId, revision: staleRevision });
+
+  // Оно не должно было пометить доставленным то, что ждёт ИМЕННО freshRevision:
+  // следующий толчок снимка не обязан переслать Blob заново без НАСТОЯЩЕГО applied
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  assert.equal(h.iframe.messages.filter(m => m.kind === 'snapshot' && m.assets).length, 0, 'состояние новой отправки не должно было пострадать от чужого устаревшего applied');
+
+  // А настоящее applied за актуальную ревизию по-прежнему принимается штатно
+  h.send({ channel: CHANNEL, kind: 'applied', channelId: h.channelId, revision: freshRevision });
+  h.current.projects.projects[0].cover = 'original';
+  h.editor.notify(h.current);
+  h.current.projects.projects[0].cover = uploadedName;
+  h.iframe.messages.length = 0;
+  h.editor.notify(h.current);
+  assert.equal(h.iframe.messages.filter(m => m.kind === 'snapshot' && Object.values(m.assets ?? {}).some(v => v instanceof Blob)).length, 1, 'после настоящего applied и нового цикла ухода из употребления id всё ещё переотправляется штатно');
+});
+
 /* field()/touch()/select() в admin.js вырезаются как исходный текст и
    выполняются в песочнице — тот же приём, что в присланном
    reproduce.mjs. Раньше песочница подсовывала им плоский массив
@@ -306,9 +371,9 @@ test('Протокол: конверт отсеивает постороннее
   assert.ok(readEnvelope({ channel: CHANNEL, kind: 'init' }));
 });
 
-test('Протокол: revision — только конечное неотрицательное целое', () => {
-  for (const bad of [-1, 1.5, NaN, Infinity, '3', null, undefined]) assert.equal(isValidRevision(bad), false);
-  for (const ok of [0, 1, 999]) assert.equal(isValidRevision(ok), true);
+test('Протокол: revision — только безопасное неотрицательное целое', () => {
+  for (const bad of [-1, 1.5, NaN, Infinity, '3', null, undefined, Number.MAX_SAFE_INTEGER + 1]) assert.equal(isValidRevision(bad), false);
+  for (const ok of [0, 1, 999, Number.MAX_SAFE_INTEGER]) assert.equal(isValidRevision(ok), true);
 });
 
 test('Протокол: looksLikeDraft допускает пустые строки, но не мусорную форму', () => {
@@ -317,6 +382,17 @@ test('Протокол: looksLikeDraft допускает пустые стро�
   assert.equal(looksLikeDraft('да'), false);
   assert.equal(looksLikeDraft({ profile: {}, projects: { projects: null } }), false);
   assert.equal(looksLikeDraft({ projects: { projects: [] } }), false);
+});
+
+test('Протокол: looksLikeDraft отсеивает форму, которая крашит downstream-код (внешнее ревью коммита 9301130)', () => {
+  // profile строкой вместо объекта — раньше `!!value.profile` пропускал любую непустую строку
+  assert.equal(looksLikeDraft({ profile: 'wrong', projects: { projects: [] } }), false);
+  // null внутри списка проектов — раньше Array.isArray(projects.projects) этого не ловил,
+  // а imageNames()/рендер карточек падали на p.cover у null
+  assert.equal(looksLikeDraft({ profile: {}, projects: { projects: [null] } }), false);
+  assert.equal(looksLikeDraft({ profile: {}, projects: { projects: [{ title: '' }, null] } }), false);
+  assert.equal(looksLikeDraft({ profile: {}, projects: { projects: ['строка вместо проекта'] } }), false);
+  assert.equal(looksLikeDraft({ profile: [], projects: { projects: [] } }), false, 'массив — не профиль');
 });
 
 test('Протокол: init/snapshot/selection/mode/applied проверяют свою форму целиком', () => {

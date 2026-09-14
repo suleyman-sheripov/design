@@ -13,15 +13,26 @@ export const CHANNEL = 'portfolio-editor-bridge/1';
 /* Черновик во время ввода может на миг содержать пустые строки —
    это не то же самое, что готовность к публикации (её проверяет
    validateContent в model.js). Здесь проверяется только форма:
-   профиль и список проектов существуют как объект/массив. */
+   профиль — объект (не строка), каждый проект — объект (не null),
+   а не полное содержимое каждого поля. Раньше `!!value.profile`
+   пропускало ЛЮБУЮ непустую строку вместо профиля, а
+   `Array.isArray(projects.projects)` — массив с null внутри: оба
+   случая крашили downstream-код (imageNames, рендер карточек),
+   получавший их как настоящий документ. Полную проверку публикации
+   (validateContent) сюда намеренно не переносим — иначе временное
+   пустое поле во время печати снова стало бы невалидным черновиком. */
+const isPlainObject = value => !!value && typeof value === 'object' && !Array.isArray(value);
+
 export function looksLikeDraft(value) {
-  if (!value || typeof value !== 'object') return false;
+  if (!isPlainObject(value)) return false;
+  if (!isPlainObject(value.profile)) return false;
   const projects = value.projects;
-  return !!value.profile && !!projects && Array.isArray(projects.projects);
+  if (!isPlainObject(projects) || !Array.isArray(projects.projects)) return false;
+  return projects.projects.every(isPlainObject);
 }
 
 export function isValidRevision(value) {
-  return Number.isInteger(value) && Number.isFinite(value) && value >= 0;
+  return Number.isSafeInteger(value) && value >= 0;
 }
 
 export function isValidMode(value) {

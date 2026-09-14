@@ -26,6 +26,13 @@ export function createHistory({ getData, setData, onChange, limit = 60 }) {
   let redoStack = [];
   let lastKnownState = serialize();
   let openKey = null;
+  /* Снимок redoStack, сделанный в момент begin() — не для чтения, а
+     для ВОЗВРАТА, если открытая транзакция окажется пустышкой
+     (cancel, или commit без реального изменения: набрал — стёр
+     обратно). Раньше begin() уничтожал ветку Redo сразу, ещё до
+     того, как стало известно, изменится ли документ вообще —
+     ревью поймало это на begin()+cancel() без единой мутации. */
+  let redoStackAtBegin = null;
 
   function serialize() { return JSON.stringify(getData()); }
 
@@ -35,8 +42,18 @@ export function createHistory({ getData, setData, onChange, limit = 60 }) {
     undoStack.push(lastKnownState);
     if (undoStack.length > limit) undoStack.shift();
     lastKnownState = now;
+    /* Здесь, а не превентивно в begin()/touch(): именно в этот
+       момент правка становится настоящим шагом истории, и только
+       тогда прежняя ветка Redo действительно относится к другому,
+       уже нереализуемому будущему. */
+    redoStack = [];
     onChange();
     return true;
+  }
+
+  function restoreAbandonedRedo() {
+    if (redoStackAtBegin) redoStack = redoStackAtBegin;
+    redoStackAtBegin = null;
   }
 
   /* key — не текст, а признак ИДЕНТИЧНОСТИ конкретного поля: объект,
@@ -47,18 +64,26 @@ export function createHistory({ getData, setData, onChange, limit = 60 }) {
     if (openKey === key) return; // транзакция уже открыта под этим ключом
     commit(); // закрыть предыдущую, если была открыта под другим полем
     openKey = key;
-    /* Новая правка началась — ветка Redo относится к другому
-       будущему и больше не действует, даже если эту правку потом
-       не завершат */
-    redoStack = [];
+    redoStackAtBegin = redoStack.slice();
   }
 
-  function markDirty() { onChange(); }
+  /* Живой индикатор для кнопки «Повторить»: как только открытая
+     транзакция реально разошлась с lastKnownState, Redo прячется —
+     он относится к будущему, несовместимому с тем, что печатают
+     прямо сейчас. Если ввод потом вернётся к исходному значению или
+     будет отменён, restoreAbandonedRedo() в commit()/cancel() вернёт
+     эту ветку обратно: сам факт временного расхождения не обязан
+     быть окончательным. */
+  function markDirty() {
+    if (redoStack.length && serialize() !== lastKnownState) redoStack = [];
+    onChange();
+  }
 
   function commit() {
     if (openKey === null) return;
     openKey = null;
-    finalizeIfChanged();
+    if (finalizeIfChanged()) redoStackAtBegin = null;
+    else restoreAbandonedRedo();
   }
 
   /* Разовое атомарное действие (добавить, удалить, переставить,
@@ -70,16 +95,16 @@ export function createHistory({ getData, setData, onChange, limit = 60 }) {
      правка попадёт в ЭТУ же запись, а не потеряется. */
   function touch() {
     openKey = null;
-    redoStack = [];
+    redoStackAtBegin = null;
     finalizeIfChanged();
   }
 
-  /* Отменить незавершённую правку, не превращая её в шаг истории.
-     Пока нигде не вызывается — доступно для Escape-сценариев позже. */
+  /* Отменить незавершённую правку, не превращая её в шаг истории. */
   function cancel() {
     if (openKey === null) return;
     openKey = null;
     setData(JSON.parse(lastKnownState));
+    restoreAbandonedRedo();
     onChange();
   }
 
@@ -98,6 +123,10 @@ export function createHistory({ getData, setData, onChange, limit = 60 }) {
   }
 
   function redo() {
+    /* Симметрично undo(): если что-то как раз печатают в другом
+       поле, эта правка обязана сперва стать записью истории, а не
+       молча потеряться под setData() ниже. */
+    commit();
     if (!redoStack.length) return false;
     undoStack.push(lastKnownState);
     if (undoStack.length > limit) undoStack.shift();
@@ -111,6 +140,7 @@ export function createHistory({ getData, setData, onChange, limit = 60 }) {
     undoStack = [];
     redoStack = [];
     openKey = null;
+    redoStackAtBegin = null;
     lastKnownState = serialize();
   }
 

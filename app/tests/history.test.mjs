@@ -91,7 +91,7 @@ test('commit(), реально зафиксировавший запись, са
   assert.ok(calls > callsAfterBeginOnly, 'commit без предшествующего markDirty всё равно обязан уведомить, если что-то изменилось');
 });
 
-test('Redo: работает после Undo, стирается новой правкой, даже не завершённой', () => {
+test('Redo: работает после Undo, стирается настоящей новой правкой, даже не завершённой', () => {
   const h = setup();
   h.data.n = 1; h.history.touch();
   h.history.undo();
@@ -102,8 +102,82 @@ test('Redo: работает после Undo, стирается новой пр
   h.history.undo();
   assert.equal(h.history.canRedo(), true);
   const key = {};
-  h.history.begin(key); // новая правка ЕЩЁ НЕ завершена
-  assert.equal(h.history.canRedo(), false, 'ветка Redo стирается в момент начала новой правки, не дожидаясь commit');
+  h.history.begin(key);
+  assert.equal(h.history.canRedo(), true, 'begin() сам по себе ничего не изменил — рано хоронить Redo');
+  h.data.n = 5; h.history.markDirty(); // настоящее расхождение с lastKnownState
+  assert.equal(h.history.canRedo(), false, 'а вот реальная правка, пусть ещё и не закоммиченная, стирает ветку Redo');
+});
+
+test('begin() + cancel() без единой мутации не трогают Redo (баг из внешнего ревью: begin() рубил его сразу)', () => {
+  const h = setup();
+  h.data.n = 1; h.history.touch();
+  h.history.undo();
+  assert.equal(h.history.canRedo(), true);
+
+  h.history.begin({});
+  h.history.cancel();
+  assert.equal(h.history.canRedo(), true, 'транзакция, в которой ничего не менялось, не должна была уничтожить действующую ветку Redo');
+});
+
+test('Правка, вернувшаяся к исходному значению перед commit, не стирает Redo (нет реальной разницы — нет причин рубить будущее)', () => {
+  const h = setup();
+  h.data.n = 1; h.history.touch();
+  h.history.undo(); // data.n снова 0, canRedo() true
+  assert.equal(h.history.canRedo(), true);
+
+  const key = {};
+  h.history.begin(key);
+  h.data.n = 7; h.history.markDirty();
+  assert.equal(h.history.canRedo(), false, 'пока значение реально другое — Redo скрыт');
+  h.data.n = 0; h.history.markDirty(); // вернули как было
+  h.history.commit();
+  assert.equal(h.history.canUndo(), false, 'no-op правка не должна была попасть в Undo');
+  assert.equal(h.history.canRedo(), true, 'и не должна была окончательно похоронить прежний Redo');
+});
+
+test('Настоящая новая правка после Undo окончательно уничтожает прежнюю ветку Redo при commit', () => {
+  const h = setup();
+  h.data.n = 1; h.history.touch();
+  h.history.undo();
+  assert.equal(h.history.canRedo(), true);
+
+  const key = {};
+  h.history.begin(key);
+  h.data.n = 9; h.history.markDirty();
+  h.history.commit();
+  assert.equal(h.history.canRedo(), false, 'реальная новая ветка истории окончательно отменяет старый Redo');
+  assert.equal(h.history.redo(), false, 'и восстановить прежнее будущее (n=1) уже нельзя');
+});
+
+test('Незавершённый ввод + Undo/Redo: Undo сам коммитит его и восстанавливает через Redo', () => {
+  const h = setup();
+  const key = {};
+  h.history.begin(key);
+  h.data.n = 42; h.history.markDirty();
+  assert.equal(h.history.canUndo(), false, 'ещё не закоммичено явно');
+
+  assert.equal(h.history.undo(), true, 'Undo обязан сам зафиксировать висящую правку и тут же её отменить');
+  assert.equal(h.data.n, 0);
+  assert.equal(h.history.canRedo(), true);
+
+  assert.equal(h.history.redo(), true);
+  assert.equal(h.data.n, 42, 'Redo обязан вернуть именно то значение, что было набрано');
+});
+
+test('Незавершённый ввод в одном поле не теряется при Redo в другом: redo() сам коммитит его перед прыжком в будущее', () => {
+  const h = setup();
+  h.data.n = 1; h.history.touch();
+  h.history.undo(); // canRedo() true, data.n=0
+
+  const key = {};
+  h.history.begin(key);
+  h.data.n = 999; h.history.markDirty(); // висящая, ещё не закоммиченная правка в другом поле
+  assert.equal(h.history.canRedo(), false, 'редактирование уже идёт — прежний Redo скрыт, пока не ясно, что с ним делать');
+
+  assert.equal(h.history.redo(), false, 'коммит незавершённой правки уничтожил именно ту ветку Redo, в которую пытались прыгнуть');
+  assert.equal(h.data.n, 999, 'но сам незавершённый ввод не потерян — стал обычной записью Undo');
+  assert.equal(h.history.undo(), true);
+  assert.equal(h.data.n, 0, 'и его по-прежнему можно откатить как любую другую правку');
 });
 
 test('clear(): обнуляет обе ветки и сбрасывает контрольную точку на текущее состояние', () => {

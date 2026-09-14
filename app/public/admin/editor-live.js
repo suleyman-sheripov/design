@@ -42,15 +42,25 @@ export function initLiveEditor({
   let revision = 0;
 
   /* Доставка изображений подтверждается ребёнком (applied), а не
-     предполагается в момент отправки. sentAssetIds — то, что ребёнок
-     точно получил; pendingAssetIds — то, что уже отправлено, но ответ
-     ещё не пришёл; pendingByRevision — какой именно набор id ушёл с
-     каким снимком, чтобы applied знал, что именно снять с ожидания.
-     Без этого 100 нажатий клавиши после одной загрузки картинки сто
-     раз пересылали бы тот же Blob и пересоздавали его object URL. */
-  let sentAssetIds = new Set();
-  let pendingAssetIds = new Set();
-  let pendingByRevision = new Map();
+     предполагается в момент отправки: id → 'sent' (точно получено)
+     либо номер ревизии снимка, с которым Blob ушёл и подтверждение
+     ещё не пришло. Без этого 100 нажатий клавиши после одной
+     загрузки картинки сто раз пересылали бы тот же Blob.
+
+     Раньше это были три отдельных Set/Map (sentAssetIds,
+     pendingAssetIds, pendingByRevision), синхронизируемых вручную —
+     и именно в их рассинхронизации был баг, найденный ревью: id
+     выходил из употребления и терял отметки «отправлен»/«ждёт», но
+     оставался в pendingByRevision, поэтому запоздавший applied для
+     старой ревизии безусловно возвращал его в sentAssetIds — даже
+     если к этому моменту id успел не использоваться и понадобиться
+     заново под ДРУГОЙ отправкой. Один Map на id избавляет от этого
+     класса ошибок структурно: применить(revision) может подтвердить
+     ТОЛЬКО то, что прямо сейчас числится ожидающим именно эту
+     ревизию — что удалено из карты (вышло из употребления) или уже
+     переотправлено под более новой ревизией, устаревшее подтверждение
+     не трогает. */
+  let assetDelivery = new Map();
 
   /* Гонка загрузки изображений: у каждой цели (проект + поле) своя
      последовательность операций. Если пока shrink() ждал, для той же
@@ -123,19 +133,18 @@ export function initLiveEditor({
     revision++;
     /* Новое подключение — прежние отметки «ребёнок это уже получил»
        больше ничего не значат для НОВОГО ребёнка */
-    sentAssetIds = new Set();
-    pendingAssetIds = new Set();
-    pendingByRevision = new Map();
+    assetDelivery = new Map();
     iframe.contentWindow.postMessage({ channel: CHANNEL, kind: 'init', channelId, revision, mode, document: data }, location.origin);
     pushSnapshot();
   }
 
   function onApplied(raw) {
     const rev = raw.revision;
-    const ids = pendingByRevision.get(rev);
-    if (!ids) return;
-    pendingByRevision.delete(rev);
-    for (const id of ids) { pendingAssetIds.delete(id); sentAssetIds.add(id); }
+    /* Подтверждает только то, что прямо сейчас числится ожидающим
+       ИМЕННО эту ревизию. Id, вышедший из употребления (удалён из
+       карты в pushSnapshot) или переотправленный позже под новой
+       ревизией, этим запоздавшим applied не трогается. */
+    for (const [id, status] of assetDelivery) if (status === rev) assetDelivery.set(id, 'sent');
   }
 
   function pushSnapshot() {
@@ -144,24 +153,22 @@ export function initLiveEditor({
 
     const used = liveAssetsInUse();
     /* Id, переставший использоваться (например, Undo вернул старую
-       обложку), теряет отметку «уже отправлен»: если он понадобится
-       снова, ребёнок получит Blob заново, а не сломанную ссылку на
-       то, что сам же освободил у себя. */
-    for (const id of [...sentAssetIds]) if (!used.has(id)) sentAssetIds.delete(id);
-    for (const id of [...pendingAssetIds]) if (!used.has(id)) pendingAssetIds.delete(id);
+       обложку), теряет ВСЮ историю доставки: если он понадобится
+       снова, ребёнок получит Blob заново, как в первый раз, а не по
+       сломанной ссылке на то, что сам же у себя освободил. */
+    for (const id of [...assetDelivery.keys()]) if (!used.has(id)) assetDelivery.delete(id);
 
     const toSend = {};
     for (const [id, image] of used) {
-      if (sentAssetIds.has(id) || pendingAssetIds.has(id)) continue;
+      if (assetDelivery.has(id)) continue; // уже доставлен или ждёт подтверждения
       toSend[id] = image.blob;
     }
-    const sentThisTime = new Set(Object.keys(toSend));
-    for (const id of sentThisTime) pendingAssetIds.add(id);
-    if (sentThisTime.size) pendingByRevision.set(revision, sentThisTime);
+    const sentThisTime = Object.keys(toSend);
+    for (const id of sentThisTime) assetDelivery.set(id, revision);
 
     iframe.contentWindow.postMessage({
       channel: CHANNEL, kind: 'snapshot', channelId, revision, mode, document: data,
-      assets: sentThisTime.size ? toSend : undefined,
+      assets: sentThisTime.length ? toSend : undefined,
     }, location.origin);
   }
 
