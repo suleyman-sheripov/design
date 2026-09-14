@@ -136,7 +136,7 @@ export function usePreviewBridge(): EditBridge {
            опять новую), родитель узнаёт об этом по своей же копии
            «что уже отправлено» и пришлёт Blob заново — см.
            editor-live.js: pushSnapshot убирает такие id из
-           sentAssetIds/pendingAssetIds в тот же момент. */
+           assetDelivery в тот же момент. */
         const stillUsed = new Set(imageNames(document))
         for (const [id, url] of liveAssets) {
           if (!stillUsed.has(id)) {
