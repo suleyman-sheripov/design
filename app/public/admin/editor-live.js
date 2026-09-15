@@ -45,6 +45,9 @@ export function initLiveEditor({
   let caseCoverImgEl = null;
   let caseCoverReplaceEl = null;
   let caseCoverUseFallbackEl = null;
+  let galleryButtons = new Map();
+  let galleryFields = new Map();
+  let galleryAddEl = null;
   let mode = 'select';
   let revision = 0;
 
@@ -238,6 +241,13 @@ export function initLiveEditor({
       if (caseCoverImgEl.src !== src) caseCoverImgEl.src = src;
     }
     if (caseCoverUseFallbackEl) caseCoverUseFallbackEl.disabled = !project.caseCover;
+    for (const shot of project.shots || []) {
+      const view = galleryFields.get(shot.id);
+      if (!view) continue;
+      if (view.input && view.input.value !== shot.alt) view.input.value = shot.alt;
+      const src = assetUrl(shot.file);
+      if (view.img.src !== src) view.img.src = src;
+    }
   }
 
   function onSelect(target) {
@@ -281,6 +291,9 @@ export function initLiveEditor({
 
   function renderInspectorEmpty() {
     inspector.replaceChildren();
+    galleryButtons = new Map();
+    galleryFields = new Map();
+    galleryAddEl = null;
     titleInputEl = null;
     coverImgEl = null;
     coverReplaceEl = null;
@@ -293,6 +306,82 @@ export function initLiveEditor({
       ? 'Выберите карточку проекта в предпросмотре слева — здесь появятся её настройки.'
       : 'Режим проверки: ссылки работают как на обычном сайте. Переключитесь на «Выбрать элемент», чтобы редактировать.';
     inspector.append(hint);
+  }
+
+  function buildGallery(targetKey, project) {
+    galleryButtons = new Map(); galleryFields = new Map();
+    const section = document.createElement('section');
+    section.className = 'live-gallery';
+    section.setAttribute('aria-label', 'Галерея кейса');
+    const heading = document.createElement('h3');
+    heading.textContent = 'Галерея кейса';
+    const note = document.createElement('p');
+    note.className = 'field-hint';
+    note.textContent = 'Порядок изображений внутри кейса. Подписи видны на сайте; перед публикацией заполни их.';
+    section.append(heading, note);
+    const previewCase = document.createElement('button');
+    previewCase.type = 'button'; previewCase.className = 'btn-ghost';
+    previewCase.textContent = 'Открыть кейс в предпросмотре';
+    previewCase.addEventListener('click', () => {
+      commit();
+      const current = findProject(targetKey);
+      if (current?.slug) iframe.src = PREVIEW_URL + '#/work/' + encodeURIComponent(current.slug);
+    });
+    section.append(previewCase);
+    const focusItem = id => (galleryButtons.get(id) || galleryAddEl)?.focus();
+    function change(result) {
+      if (result.status !== 'applied') return;
+      render();
+      // Structural actions may run while focus is inside the inspector.
+      if (selectedSlug === targetKey) renderInspectorFor(targetKey);
+      focusItem(result.galleryItemId);
+    }
+    function open(target, label) {
+      let focusId = target.galleryItemId;
+      mediaDialog.open(target, label, {
+        onSelectExisting(t, asset) { const result = onSelectExisting(t, asset); focusId = result.galleryItemId || focusId; return result; },
+        async onUploadFile(t, file, opts) { const result = await onUploadFile(t, file, opts); focusId = result.galleryItemId || focusId; return result; },
+        restoreFocus: () => focusItem(focusId),
+      });
+    }
+    const shots = project.shots || [];
+    if (!shots.length) {
+      const empty = document.createElement('p');
+      empty.className = 'field-hint';
+      empty.textContent = 'Пока нет изображений. Добавь первое из медиатеки или загрузи своё.';
+      section.append(empty);
+    }
+    shots.forEach((shot, index) => {
+      const target = { projectId: targetKey, slot: 'gallery', galleryItemId: shot.id };
+      const card = document.createElement('div');
+      card.className = 'live-gallery-item';
+      const img = document.createElement('img');
+      img.src = assetUrl(shot.file); img.alt = ''; img.loading = 'lazy';
+      const number = document.createElement('span');
+      number.className = 'field-label'; number.textContent = 'Изображение ' + (index + 1);
+      const caption = field('Подпись к изображению ' + (index + 1), shot.alt, value => {
+        const current = findProject(targetKey)?.shots.find(s => s.id === shot.id);
+        if (current) current.alt = value;
+      }, { wide: true, debounceMs: 550 });
+      galleryFields.set(shot.id, { img, input: caption.querySelector('input,textarea') });
+      const actions = document.createElement('div'); actions.className = 'live-gallery-actions';
+      function action(label, fn, disabled = false) {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'btn-ghost';
+        button.textContent = label; button.setAttribute('aria-label', label + ' — изображение ' + (index + 1));
+        button.disabled = disabled; button.addEventListener('click', fn); actions.append(button); return button;
+      }
+      const replace = action('Заменить', () => open(target, 'Изображение ' + (index + 1) + ' — ' + project.title));
+      galleryButtons.set(shot.id, replace);
+      action('Выше', () => change(mediaCommands.moveGalleryItem(target, -1)), index === 0);
+      action('Ниже', () => change(mediaCommands.moveGalleryItem(target, 1)), index === shots.length - 1);
+      action('Убрать из галереи', () => change(mediaCommands.removeGalleryItem(target)));
+      card.append(number, img, caption, actions); section.append(card);
+    });
+    galleryAddEl = document.createElement('button'); galleryAddEl.type = 'button'; galleryAddEl.className = 'btn-ghost';
+    galleryAddEl.textContent = 'Добавить изображение'; galleryAddEl.disabled = shots.length >= 100;
+    galleryAddEl.addEventListener('click', () => open({ projectId: targetKey, slot: 'gallery-add' }, 'Добавить в галерею — ' + project.title));
+    section.append(galleryAddEl);
+    return section;
   }
 
   function renderInspectorFor(targetKey) {
@@ -393,7 +482,7 @@ export function initLiveEditor({
     caseCoverHint.textContent = 'Пока отдельная картинка не выбрана, кейс открывается тем же превью, что и подборка. Смена превью в этом случае меняет и обложку кейса.';
     caseCoverField.append(caseCoverLabel, caseCoverImg, caseCoverActions, caseCoverHint);
 
-    inspector.append(head, titleField, coverField, caseCoverField);
+    inspector.append(head, titleField, coverField, caseCoverField, buildGallery(targetKey, project));
   }
 
   return {
@@ -415,4 +504,3 @@ export function initLiveEditor({
     },
   };
 }
-

@@ -5,6 +5,19 @@ export const SHOTS_DIR = 'content/work';
 export const safeName = value => typeof value === 'string' && /^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?$/.test(value);
 export const imageNames = data => [...new Set(data.projects.projects.flatMap(p => [p.cover,p.caseCover,...p.shots.map(s=>s.file)]).filter(Boolean))];
 
+// Called once when an editor document is loaded/imported, before history is seeded.
+export function ensureShotIds(data) {
+  for (const project of data.projects.projects) {
+    const used = new Set(project.shots.map(shot => shot.id).filter(Boolean));
+    for (const shot of project.shots) if (shot.id === undefined) {
+      let id;
+      do { id = crypto.randomUUID(); } while (used.has(id));
+      shot.id = id; used.add(id);
+    }
+  }
+  return data;
+}
+
 export function validateContent(data) {
   const fail = message => { throw new Error(message); };
   const str = (value, label, required = false) => {
@@ -60,10 +73,13 @@ export function validateContent(data) {
     if (!['commercial','teaching','study','personal'].includes(project.category)) fail('Укажи тип проекта ' + project.title + '.');
     if (!['wide','tall'].includes(project.ratio)) fail('Проверь пропорцию обложки.');
     list(project.shots, 'Снимки');
-    const files = new Set();
+    const ids = new Set();
     for (const shot of project.shots) {
-      if (!safeName(shot.file) || files.has(shot.file)) fail('Имена снимков должны быть безопасными и не повторяться в кейсе.');
-      files.add(shot.file);
+      if (!shot || !safeName(shot.file)) fail('Проверь имя снимка.');
+      if (shot.id !== undefined) {
+        if (!safeName(shot.id) || ids.has(shot.id)) fail('Идентификаторы снимков должны быть уникальными внутри кейса.');
+        ids.add(shot.id);
+      }
       str(shot.alt, 'Описание снимка', project.status === 'published');
     }
     if (project.status === 'published' && (!project.shots.length || !project.cover)) fail('Перед публикацией добавь снимки, подписи и выбери обложку: ' + project.title + '.');

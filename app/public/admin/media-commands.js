@@ -7,21 +7,31 @@ export function createMediaCommands({ findProject, uploads, safeName, shrink, ge
   function resolve(target) {
     const project = findProject(target.projectId);
     if (!project) return null;
+    if (target.slot === 'gallery-add') return project.shots.length < 100 ? { project, append: true } : null;
     if (target.slot === 'cover' || target.slot === 'caseCover') return { object: project, key: target.slot };
     if (target.slot !== 'gallery' || !target.galleryItemId) return null;
     const shot = project.shots?.find(s => s.id === target.galleryItemId);
     return shot ? { object: shot, key: 'file' } : null;
+  }
+  function apply(destination, assetId) {
+    if (destination.append) {
+      const shot = { id: crypto.randomUUID(), file: assetId, alt: '' };
+      destination.project.shots.push(shot);
+      return { status: 'applied', galleryItemId: shot.id };
+    }
+    destination.object[destination.key] = assetId;
+    return { status: 'applied' };
   }
   function selectExistingAsset(target, assetId) {
     if (!assetId || !safeName(assetId)) return cancelled();
     const destination = resolve(target);
     if (!destination) return cancelled();
     advance(keyFor(target));
-    if (destination.object[destination.key] === assetId) return { status: 'unchanged' };
+    if (!destination.append && destination.object[destination.key] === assetId) return { status: 'unchanged' };
     commit();
-    destination.object[destination.key] = assetId;
+    const result = apply(destination, assetId);
     touch();
-    return { status: 'applied' };
+    return result;
   }
   // Removes an explicit caseCover override so it falls back to cover. Not a
   // general "clear any slot": cover is required (there is no fallback for
@@ -52,10 +62,10 @@ export function createMediaCommands({ findProject, uploads, safeName, shrink, ge
       const destination = resolve(target);
       const name = 'media-' + crypto.randomUUID();
       uploads.set(name, prepared);
-      destination.object[destination.key] = name;
+      const result = apply(destination, name);
       attached = true;
       touch();
-      return { status: 'applied' };
+      return result;
     } catch (error) {
       return current() ? { status: 'error', message: error?.message || 'Не удалось обработать изображение.' } : cancelled();
     } finally {
@@ -63,5 +73,26 @@ export function createMediaCommands({ findProject, uploads, safeName, shrink, ge
       setImageJobsPending(-1);
     }
   }
-  return { selectExistingAsset, uploadForTarget, clearAsset };
+  function removeGalleryItem(target) {
+    const project = findProject(target.projectId);
+    const index = target.slot === 'gallery' ? project?.shots.findIndex(s => s.id === target.galleryItemId) : -1;
+    if (index === undefined || index < 0) return cancelled();
+    advance(keyFor(target));
+    commit();
+    project.shots.splice(index, 1);
+    touch();
+    return { status: 'applied', galleryItemId: project.shots[Math.min(index, project.shots.length - 1)]?.id };
+  }
+  function moveGalleryItem(target, direction) {
+    const project = findProject(target.projectId);
+    const index = target.slot === 'gallery' ? project?.shots.findIndex(s => s.id === target.galleryItemId) : -1;
+    if (index === undefined || index < 0 || ![-1,1].includes(direction)) return cancelled();
+    const next = index + direction;
+    if (next < 0 || next >= project.shots.length) return { status: 'unchanged' };
+    commit();
+    [project.shots[index], project.shots[next]] = [project.shots[next], project.shots[index]];
+    touch();
+    return { status: 'applied', galleryItemId: target.galleryItemId };
+  }
+  return { selectExistingAsset, uploadForTarget, clearAsset, removeGalleryItem, moveGalleryItem };
 }

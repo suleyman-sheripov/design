@@ -558,3 +558,11 @@ html { scroll-behavior:smooth; scroll-padding-top:10rem; }
 
 
 .media-status--error { color: #a22e27; }
+
+.live-gallery { min-width:0; border-top:1px solid var(--rule); padding-top:1rem; }
+.live-gallery h3 { margin:0 0 .5rem; font-size:1rem; }
+.live-gallery-item { min-width:0; margin-block:1rem; padding-bottom:1rem; border-bottom:1px solid var(--rule); }
+.live-gallery-item > img { display:block; width:100%; height:130px; object-fit:contain; background:var(--paper); margin:.5rem 0; border-radius:8px; }
+.live-gallery-actions { display:flex; flex-wrap:wrap; gap:.35rem; }
+.live-gallery-actions button { font-size:.75rem; padding:.45rem .6rem; }
+.live-gallery .field { min-width:0; }

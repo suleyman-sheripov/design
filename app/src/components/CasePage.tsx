@@ -2,10 +2,12 @@ import { Fragment, useEffect, useRef } from 'react'
 import { shotSrc, type Profile, type Project } from '../data'
 import { ProjectArt } from './Work'
 import { CaseCopy } from './CaseCopy'
+import { useEditBridge } from '../lib/previewBridge'
 import { categoryLabel, caseHref, handleProjectClick, projectStyle, type OpenProject } from '../lib/projectPresentation'
 
 export function CasePage({project, next, profile, onOpen, onHome}: {project: Project; next?: Project; profile: Profile; onOpen: OpenProject; onHome:()=>void}) {
   const page = useRef<HTMLElement>(null)
+  const bridge = useEditBridge()
   useEffect(() => {
     const title = document.title
     document.title = `${project.title} — ${profile.name}`
@@ -26,7 +28,7 @@ export function CasePage({project, next, profile, onOpen, onHome}: {project: Pro
       <CaseCopy project={project} section="solution" />
     </div>
     <section className={`case-gallery ${project.ratio==='tall'?'case-gallery-mobile':''}`} aria-label="Детали проекта">
-      {project.shots.map((shot,i)=><Fragment key={shot.file}><figure><div className="case-shot"><img src={shotSrc(shot.file)} alt={shot.alt} loading="lazy" /></div><figcaption><span>{String(i+1).padStart(2,'0')}</span>{shot.alt}</figcaption></figure>{i === (project.ratio === 'tall' ? Math.min(1, project.shots.length - 1) : 0) && <CaseCopy project={project} section="details" />}</Fragment>)}
+      {project.shots.map((shot,i)=><Fragment key={shot.id ?? `${shot.file}-${i}`}><figure><div className="case-shot"><img src={bridge.assetUrl(shot.file) ?? shotSrc(shot.file)} alt={shot.alt} loading="lazy" /></div><figcaption><span>{String(i+1).padStart(2,'0')}</span>{shot.alt}</figcaption></figure>{i === (project.ratio === 'tall' ? Math.min(1, project.shots.length - 1) : 0) && <CaseCopy project={project} section="details" />}</Fragment>)}
     </section>
     {next && <section className="case-next" aria-label="Следующая работа"><p className="eyebrow">Продолжим смотреть</p><a href={caseHref(next.slug)} onClick={e=>handleProjectClick(e,next,onOpen)}><div><span>Следующий проект ↗</span><h2>{next.title}</h2><p>{next.kind}</p></div><ProjectArt project={next} /></a></section>}
     <footer className="case-footer"><a href="#work" onClick={e=>{e.preventDefault();onHome()}}>← К выставке работ</a><a href={`mailto:${profile.email}`}>Обсудить похожую задачу ↗</a></footer>

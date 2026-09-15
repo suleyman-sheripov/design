@@ -3,3 +3,5 @@ export const SHOTS_DIR: string;
 export function imageNames(value: unknown): string[];
 export function safeName(value: unknown): boolean;
 export function validateContent<T>(value: unknown): T;
+
+export function ensureShotIds<T>(value: T): T;

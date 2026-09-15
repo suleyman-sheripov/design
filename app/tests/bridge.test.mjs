@@ -75,7 +75,7 @@ function harness(overrides = {}) {
 
   editor = initLiveEditor({
     mount,
-    model: { imageNames: d => d.projects.projects.flatMap(p => [p.cover, p.caseCover].filter(Boolean)), safeName },
+    model: { imageNames: d => d.projects.projects.flatMap(p => [p.cover, p.caseCover, ...(p.shots || []).map(s => s.file)].filter(Boolean)), safeName },
     field, shrink, uploads,
     assetUrl: name => uploads.get(name)?.url ?? name,
     touch: () => { commits++; },
@@ -431,6 +431,52 @@ test('Группировка: несколько input подряд в одно�
 });
 
 // ── Обложка кейса (caseCover) ─────────────────────────────────────
+
+test('Галерея: добавление, перестановка и удаление обновляют структуру и возвращают фокус', async () => {
+  const h = harness();
+  const project = h.current.projects.projects[0];
+  project.shots = [{id:'a',file:'original',alt:'A'}, {id:'b',file:'original',alt:'B'}];
+  h.editor.sync(h.current);
+  const action = name => walk(h.mount).find(e => e.attrs['aria-label'] === name);
+  const down = action('Ниже — изображение 1');
+  down.focus(); await down.fire('click');
+  assert.deepEqual(project.shots.map(s => s.id), ['b','a']);
+  assert.equal(document.activeElement, action('Заменить — изображение 2'));
+  const remove = action('Убрать из галереи — изображение 2');
+  remove.focus(); await remove.fire('click');
+  assert.deepEqual(project.shots.map(s => s.id), ['b']);
+  assert.equal(document.activeElement, action('Заменить — изображение 1'));
+  const last = action('Убрать из галереи — изображение 1');
+  last.focus(); await last.fire('click');
+  assert.equal(project.shots.length, 0);
+  assert.equal(document.activeElement.textContent, 'Добавить изображение');
+  h.uploads.set('gallery-photo', {url:'blob:gallery-photo',blob:new Blob(['x'])});
+  await document.activeElement.fire('click');
+  document.activeElement = null; // native dialog moves focus outside inspector
+  await findMediaItem(h,'gallery-photo').fire('click');
+  assert.equal(project.shots.length,1);assert.ok(project.shots[0].id);
+  assert.equal(project.cover,'original');
+  assert.equal(document.activeElement, action('Заменить — изображение 1'));
+  assert.ok(h.iframe.messages.some(m => m.kind === 'snapshot' && m.assets?.['gallery-photo']));
+});
+
+test('Галерея: открытие кейса сохраняет выбранный проект и инспектор', async () => {
+  const h = harness();
+  const before = h.title();
+  await walk(h.mount).find(e => e.textContent === 'Открыть кейс в предпросмотре').fire('click');
+  assert.equal(h.iframe.src, '../?editor-preview=1#/work/beautylab');
+  assert.equal(h.title(), before);
+});
+
+test('Галерея: правка подписи старой формой синхронизируется без пересоздания поля', () => {
+  const h = harness();
+  const project = h.current.projects.projects[0];
+  project.shots = [{id:'a',file:'original',alt:'A'}];h.editor.sync(h.current);
+  const input = walk(h.mount).find(e => e.label === 'Подпись к изображению 1');
+  project.shots[0].alt = 'From form';h.editor.notify(h.current);
+  assert.equal(input.value,'From form');
+  assert.equal(walk(h.mount).find(e => e.label === 'Подпись к изображению 1'),input);
+});
 
 function findMediaItem(h, nameFragment) {
   return walk(h.mount).find(e => e.tag === 'button' && e.className === 'media-item' && e.attrs['aria-label']?.includes(nameFragment));

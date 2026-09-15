@@ -25,7 +25,8 @@ export type Profile = {
   tools: Tool[]
 }
 
-export type Shot = { file: string; alt: string }
+export type Shot = {
+  id?: string; file: string; alt: string }
 
 export type Project = {
   /* Необязательное поле: админка проставляет его при загрузке

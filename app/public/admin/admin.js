@@ -1,6 +1,6 @@
 import { GitHub } from './github.js';
 import { createHistory, wireTextCommit } from './history.js';
-import { SHOTS_DIR, safeName, validateContent, imageNames } from './model.js';
+import { SHOTS_DIR, safeName, validateContent, imageNames, ensureShotIds } from './model.js';
 import { initLiveEditor } from './editor-live.js';
 
 import { DEFAULT_SETTINGS, SETTING_LABELS } from './settings.js';
@@ -125,7 +125,8 @@ async function load() {
   data.services ||= structuredClone(defaultServices);
   stampProjectIds();
   saved = serialize(data); history.clear(); clearUploads();
-  pendingImageJobs = 0;
+  // Jobs from the previous document still finish asynchronously. Keep their
+  // count until finally runs, so they cannot decrement a newer job's count.
   /* Один раз за сессию: до первой успешной load() строить снимок
      для iframe не из чего, а Reload не должен пересоздавать iframe
      заново — тогда пропала бы уже начатая правка в инспекторе */
@@ -145,6 +146,7 @@ async function load() {
    и не требует; для контента, ещё не прошедшего через эту версию
    админки, sync/выбор используют slug как раньше, см. Work.tsx. */
 function stampProjectIds() {
+  ensureShotIds(data);
   for (const project of data.projects.projects) project.id ??= crypto.randomUUID();
 }
 async function save() {
@@ -302,7 +304,7 @@ function projectRow(item, i, list) {
   const summary = document.createElement('summary');
   summary.append(text('project-name', item.title || 'Новый кейс'), text('project-status', item.status === 'published' ? 'На сайте' : 'Черновик'));
   fold.addEventListener('toggle', () => fold.open ? expandedProjects.add(item.slug) : expandedProjects.delete(item.slug));
-  entry.append(button('Дублировать как черновик',()=>{const clone=structuredClone(item);clone.id=crypto.randomUUID();clone.slug=item.slug+'-copy-'+crypto.randomUUID().slice(0,6);clone.title+=' — копия';clone.status='draft';list.splice(i+1,0,clone);expandedProjects.add(clone.slug);touch();render()}));
+  entry.append(button('Дублировать как черновик',()=>{const clone=structuredClone(item);clone.id=crypto.randomUUID();clone.shots.forEach(shot=>shot.id=crypto.randomUUID());clone.slug=item.slug+'-copy-'+crypto.randomUUID().slice(0,6);clone.title+=' — копия';clone.status='draft';list.splice(i+1,0,clone);expandedProjects.add(clone.slug);touch();render()}));
   fold.append(summary, entry);
   return fold;
 
@@ -381,7 +383,7 @@ function projectRow(item, i, list) {
         if (total + image.bytes.length > 20 * 1024 * 1024) throw new Error('В одном сохранении можно загрузить до 20 МБ. Сохрани текущие снимки.');
         const name = item.slug + '-' + crypto.randomUUID();
         uploads.set(name, image);
-        if(target==='gallery')shots.push({ file: name, alt: '' });
+        if(target==='gallery')shots.push({ id: crypto.randomUUID(), file: name, alt: '' });
         else if(target==='shot')shots[index]={...shots[index],file:name};
         else item[target]=name;
         if (!item.cover) item.cover = name;
