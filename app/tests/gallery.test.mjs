@@ -80,7 +80,7 @@ test('last removal gives empty gallery, no cover change; max 100 enforced',()=>{
   h.data.shots=Array.from({length:100},(_,i)=>({id:'shot-'+i,file:'same',alt:'Caption'}));
   assert.equal(h.commands.selectExistingAsset(add,'same').status,'cancelled');assert.equal(h.data.shots.length,100);
 });
-const fixture=()=>JSON.parse(readFileSync(new URL('../public/content/data/site.json',import.meta.url),'utf8'));
+const fixture=()=>JSON.parse(readFileSync(new URL('../../content/data/site.json',import.meta.url),'utf8'));
 test('reload cannot let an old upload completion unlock saving while a new upload is pending', async()=>{
   const source=readFileSync(new URL('../public/admin/admin.js',import.meta.url),'utf8');
   const loadSource=source.slice(source.indexOf('async function load()'),source.indexOf('/* Стабильная идентичность'));
