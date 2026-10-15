@@ -77,17 +77,21 @@ export async function restoreUploads(snapshot) {
   return result;
 }
 
-export function createDraftStore(indexedDB = globalThis.indexedDB, name = 'portfolio-drafts') {
+export function createDraftStore(indexedDB, name = 'portfolio-drafts') {
   let opening;
-  function open() {
-    return opening ??= new Promise((resolve, reject) => {
-      if (!indexedDB) { reject(new Error('IndexedDB недоступна. Разреши хранилище браузера или скачай копию.')); return; }
-      const req = indexedDB.open(name, VERSION);
+  async function open() {
+    if (opening) return opening;
+    // Access can itself throw SecurityError in a storage-restricted browser.
+    // Resolve it only inside this async operation, never during editor startup.
+    const factory = indexedDB === undefined ? globalThis.indexedDB : indexedDB;
+    if (!factory) throw new Error('IndexedDB недоступна. Разреши хранилище браузера или скачай копию.');
+    return opening = new Promise((resolve, reject) => {
+      const req = factory.open(name, VERSION);
       req.onupgradeneeded = () => req.result.createObjectStore('drafts');
       req.onerror = () => { opening = null; reject(req.error); };
       req.onblocked = () => { opening = null; reject(new Error('Закрой старые вкладки редактора и повтори.')); };
       req.onsuccess = () => { const db = req.result; db.onversionchange = () => { db.close(); opening = null; }; resolve(db); };
-    });
+    }).catch(error => { opening = null; throw error; });
   }
   return {
     async read(key) {

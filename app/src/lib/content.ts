@@ -1,4 +1,5 @@
 import { validateContent } from '../../public/admin/model.js'
+import { checkDraftDocument } from '../../public/admin/draft-store.js'
 import type { Profile, Project } from '../data'
 import type { SiteSettings, Service } from './settings'
 import snapshot from '../../../content/data/site.json'
@@ -12,9 +13,9 @@ const bundledImages = import.meta.glob<string>('../../../content/work/*.webp', {
 // JSON и изображения входят в сборку: первый показ не зависит от второго HTTP-запроса.
 let preview: {data:Content; images:Record<string,string>; mediaBase?:string} | undefined
 if (new URLSearchParams(location.search).get('editor-preview') === '1') {
-  try { const stored=JSON.parse(sessionStorage.getItem('portfolio-preview') || 'null'); if(stored) {validateContent(stored.data); preview=stored; if(typeof stored.mediaBase==='string' && /^https:\/\/raw\.githubusercontent\.com\/[\w.-]+\/[\w.-]+\/[^/]+\/content\/work\/$/.test(stored.mediaBase)) mediaBase=stored.mediaBase;} } catch { /* Invalid drafts never replace the snapshot. */ }
+  try { const stored=JSON.parse(sessionStorage.getItem('portfolio-preview') || 'null'); if(stored) {checkDraftDocument(stored.data); preview=stored; if(typeof stored.mediaBase==='string' && /^https:\/\/raw\.githubusercontent\.com\/[\w.-]+\/[\w.-]+\/[^/]+\/content\/work\/$/.test(stored.mediaBase)) mediaBase=stored.mediaBase;} } catch { /* Invalid drafts never replace the snapshot. */ }
 }
-export const initialContent = validateContent<Content>(preview?.data ?? snapshot)
+export const initialContent: Content = preview?.data ?? validateContent<Content>(snapshot)
 
 async function json(url: string) {
   const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) })

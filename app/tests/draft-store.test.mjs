@@ -163,3 +163,17 @@ test('Failed discard remains unsafe and can retry the current document after sto
   fail=false;q.schedule(snapshot('after failed reread'));await q.retry();
   assert.equal((await db.read(key)).snapshot.document.projects.projects[0].title,'after failed reread');
 });
+
+test('A denied indexedDB getter does not crash store construction or prevent retry after permission returns',async()=>{
+  const original=Object.getOwnPropertyDescriptor(globalThis,'indexedDB');let db;
+  try {
+    Object.defineProperty(globalThis,'indexedDB',{configurable:true,get(){throw new DOMException('Browser denied storage','SecurityError');}});
+    assert.doesNotThrow(()=>{db=createDraftStore();});
+    await assert.rejects(db.read(key),{name:'SecurityError'});
+    Object.defineProperty(globalThis,'indexedDB',{configurable:true,value:new IDBFactory()});
+    await db.write(key,0,snapshot('after permission restored'));
+    assert.equal((await db.read(key)).revision,1);
+  } finally {
+    if(original)Object.defineProperty(globalThis,'indexedDB',original);else delete globalThis.indexedDB;
+  }
+});

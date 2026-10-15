@@ -1,6 +1,6 @@
 import os
 BASE_URL=os.environ.get("PORTFOLIO_URL","http://127.0.0.1:5173/design/").rstrip("/")+"/"
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 from pathlib import Path
 import json
 out=Path(os.environ.get('PORTFOLIO_EVIDENCE_DIR','/tmp/design-evidence'));out.mkdir(exist_ok=True)
@@ -52,6 +52,11 @@ with sync_playwright() as p:
  page.reload();page.locator('#localDraft').click();page.get_by_role('button',name='Восстановить копию').click()
  frame=page.frame_locator('.live-frame');frame.locator('[data-case="beautylab"]').click()
  assert page.locator('.live-inspector').get_by_label('Заголовок карточки',exact=True).input_value()==''
+ with page.expect_popup() as opened:page.locator('#preview').click()
+ preview=opened.value;expect(preview.locator('[data-case="beautylab"] h3')).to_have_text('')
+ preview.locator('[data-case="beautylab"] img').first.evaluate('(img)=>img.decode()')
+ assert preview.locator('[data-case="beautylab"] img').first.evaluate('(img)=>img.naturalWidth')==120
+ preview.close()
  page.locator('#save').click();assert 'title' in page.locator('#saveState').inner_text()
  assert not errors,errors
  print('PASS: real reload, shared Blob, rendered pixels in iframe, reordered gallery, incomplete title, strict publication validation; keyboard Enter/Space; no JS exceptions',flush=True)
