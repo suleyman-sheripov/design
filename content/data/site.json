@@ -135,12 +135,12 @@
       },
       {
         "slug": "beautylab",
-        "title": "QA ONLY — autosave acceptance",
+        "title": "QA ONLY — deployed admin acceptance",
         "kind": "Сайт салона красоты",
         "role": "UI/UX",
         "year": "2025",
         "note": "Путь до записи сокращён до двух кликов: услуга выбирается прямо из каталога, а не через отдельную форму.",
-        "cover": "media-46035cc2-b835-4efa-9771-a6c296539970",
+        "cover": "media-d374ff91-5466-419d-87e9-c0c455df96fb",
         "ratio": "wide",
         "shots": [
           {
