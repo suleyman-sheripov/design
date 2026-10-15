@@ -2,6 +2,10 @@
 
 [Скачать полный ZIP](https://github.com/suleyman-sheripov/design/releases/download/portfolio-materials-2026-10-15/SHERIPOV-portfolio-all-2026-10-15.zip)
 
+[Визуальный кейс — PDF](https://github.com/suleyman-sheripov/design/releases/download/portfolio-materials-2026-10-15/SHERIPOV-Visual-Case.pdf)
+
+[Краткий логобук — PDF](https://github.com/suleyman-sheripov/design/releases/download/portfolio-materials-2026-10-15/SHERIPOV-Visual-Logobook.pdf)
+
 [Страница архива в Releases](https://github.com/suleyman-sheripov/design/releases/tag/portfolio-materials-2026-10-15)
 
 Внутри — папка «Сайт портфолио»: готовые баннеры Behance и LinkedIn,

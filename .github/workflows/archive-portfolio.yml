@@ -23,7 +23,21 @@ jobs:
       - uses: actions/checkout@v4
       - name: Restore and verify archive
         run: python3 deliveries/portfolio-2026-10-15/restore_archive.py --output "$RUNNER_TEMP/SHERIPOV-portfolio-all-2026-10-15.zip"
-      - name: Publish downloadable ZIP
+      - name: Extract standalone PDFs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import zipfile
+          root = Path(os.environ["RUNNER_TEMP"])
+          with zipfile.ZipFile(root / "SHERIPOV-portfolio-all-2026-10-15.zip") as archive:
+              for name in ["SHERIPOV-Visual-Case.pdf", "SHERIPOV-Visual-Logobook.pdf"]:
+                  data = archive.read("Сайт портфолио/07 Визуальный кейс — SHERIPOV/" + name)
+                  if not data.startswith(b"%PDF-"):
+                      raise ValueError("Invalid PDF: " + name)
+                  (root / name).write_bytes(data)
+          PY
+      - name: Publish downloadable archive and PDFs
         env:
           GH_TOKEN: ${{ github.token }}
           ARCHIVE_TAG: portfolio-materials-2026-10-15
@@ -40,6 +54,8 @@ jobs:
           fi
           gh release upload "$ARCHIVE_TAG" \
             "$RUNNER_TEMP/SHERIPOV-portfolio-all-2026-10-15.zip" \
+            "$RUNNER_TEMP/SHERIPOV-Visual-Case.pdf" \
+            "$RUNNER_TEMP/SHERIPOV-Visual-Logobook.pdf" \
             deliveries/portfolio-2026-10-15/archive.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
