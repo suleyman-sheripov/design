@@ -43,6 +43,8 @@ with sync_playwright() as p:
  assert frame.locator('[data-case="beautylab"] img').first.evaluate("img=>{const c=document.createElement('canvas');c.width=1;c.height=1;let x=c.getContext('2d');x.drawImage(img,0,0,1,1);return [...x.getImageData(0,0,1,1).data]}")[0]>180
  stored=page.evaluate('''async()=>{const {createDraftStore,workspaceKey}=await import('./draft-store.js');const config=await(await fetch('../site-config.json')).json();return (await createDraftStore().read(workspaceKey(config.content,true))).snapshot;}''')
  assert len(stored['assets'])==1
+ project=next(p for p in stored['document']['projects']['projects'] if p['slug']=='beautylab')
+ assert project['shots'][-2]['file']==project['cover']
  page.screenshot(path=str(out/'recovered-wide.png'))
  # Incomplete text is allowed in autosave, strict publication still rejects it.
  title=page.locator('.live-inspector').get_by_label('Заголовок карточки',exact=True);title.fill('')

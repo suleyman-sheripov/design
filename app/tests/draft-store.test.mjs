@@ -39,7 +39,7 @@ test('Missing Blob or malformed records are rejected without deleting the last c
   const bad=snapshot(); bad.document.projects.projects[0].cover='missing-file';
   await assert.rejects(db.write(key,1,bad),/повреждена/);
   assert.equal((await db.read(key)).revision,1);
-  for(const change of [s=>s.version=99,s=>s.document.profile.track=null,s=>s.document.projects.projects[0].shots=[null],s=>s.base=null]) {
+  for(const change of [s=>s.version=99,s=>s.document.profile.track=null,s=>s.document.projects.projects[0].shots=[null],s=>s.base=null,s=>s.document.profile.name={},s=>s.document.profile.track=[{client:'incomplete structure'}],s=>s.document.settings={showRibbon:'false'}]) {
     const malformed=snapshot();change(malformed);assert.throws(()=>validateSnapshot(malformed));
   }
 });
@@ -152,4 +152,14 @@ test('An aborted transaction after put cannot persist either a partial document 
     await assert.rejects(db.write(key,1,next));
   } finally {IDBObjectStore.prototype.put=original;}
   const record=await db.read(key);assert.equal(record.revision,1);assert.equal(record.snapshot.document.projects.projects[0].title,'committed');
+});
+
+test('Failed discard remains unsafe and can retry the current document after storage recovers',async()=>{
+  const db=store();let fail=false;
+  const transport={write:async(...args)=>{if(fail)throw new DOMException('Quota','QuotaExceededError');return db.write(...args);}};
+  const q=createDraftQueue({store:transport,key});q.schedule(snapshot('complete'));await q.flush();
+  q.schedule(snapshot('pending'));fail=true;await assert.rejects(q.discard());
+  assert.equal(q.unsafe(),true);assert.equal((await db.read(key)).snapshot.document.projects.projects[0].title,'complete');
+  fail=false;q.schedule(snapshot('after failed reread'));await q.retry();
+  assert.equal((await db.read(key)).snapshot.document.projects.projects[0].title,'after failed reread');
 });

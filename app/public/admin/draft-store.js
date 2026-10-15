@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from './settings.js';
 import { imageNames, safeName, SHOTS_DIR } from './model.js';
 import { looksLikeDraft } from './bridge-protocol.js';
 
@@ -10,14 +11,20 @@ const invalid = () => { throw new Error('Локальная копия повр�
 // validateContent. Reject credentials/URLs by persisting only this explicit envelope.
 export function checkDraftDocument(data) {
   if (!looksLikeDraft(data) || !plain(data.profile.links) || !Array.isArray(data.profile.track) || !Array.isArray(data.profile.tools)) invalid();
-  if (!data.profile.track.every(plain) || !data.profile.tools.every(plain)) invalid();
+  const strings = (object, keys) => plain(object) && keys.every(key => typeof object[key] === 'string');
+  if (!strings(data.profile, ['name', 'role', 'city', 'email', 'phone']) || !strings(data.profile.links, ['behance', 'dribbble'])) invalid();
+  if (!data.profile.track.every(v => strings(v, ['client', 'role', 'kind', 'period', 'note'])) || !data.profile.tools.every(v => strings(v, ['name', 'for', 'logo']))) invalid();
   if (data.services !== undefined && (!Array.isArray(data.services) || !data.services.every(plain))) invalid();
-  if (data.settings !== undefined && !plain(data.settings)) invalid();
+  if (data.settings !== undefined) {
+    if (!plain(data.settings) || Object.entries(data.settings).some(([key, value]) => !(key in DEFAULT_SETTINGS) || typeof value !== typeof DEFAULT_SETTINGS[key])) invalid();
+  }
+  if (data.services?.some(v => !strings(v, ['id', 'title', 'detail', 'group']) || typeof v.hero !== 'boolean')) invalid();
   if (data.projects.projects.length > 100) invalid();
   for (const p of data.projects.projects) {
     if (!Array.isArray(p.shots) || p.shots.length > 100 || !p.shots.every(s => plain(s) && safeName(s.file) && typeof s.alt === 'string')) invalid();
     for (const key of ['slug', 'title', 'kind', 'role', 'year', 'note', 'cover']) if (typeof p[key] !== 'string') invalid();
-    if (p.story !== undefined && !plain(p.story)) invalid();
+    if (p.story !== undefined && (!plain(p.story) || Object.values(p.story).some(v => typeof v !== 'string'))) invalid();
+    if (!['draft', 'published'].includes(p.status) || !['wide', 'tall'].includes(p.ratio) || !['commercial', 'teaching', 'study', 'personal'].includes(p.category)) invalid();
   }
   for (const name of imageNames(data)) if (!safeName(name)) invalid();
   const json = JSON.stringify(data);
@@ -158,10 +165,19 @@ export function createDraftQueue({ store, key, revision = 0, onState = () => {},
       error = null; report('saving'); await flush();
     },
     async discard() {
-      clearTimeout(timer); pending = undefined; stopped = true;
-      if (running) await running;
-      if (error) throw error;
-      revision = await store.write(key, revision, null);
+      clearTimeout(timer);
+      const previousPending = pending;
+      pending = undefined; stopped = true;
+      try {
+        if (running) await running;
+        if (error) throw error;
+        revision = await store.write(key, revision, null);
+      } catch (err) {
+        // A failed discard must not leave the current editor permanently
+        // stopped, lose its pending snapshot, or suppress the unload warning.
+        stopped = false; pending ||= previousPending; error = err;
+        report('error', err); throw err;
+      }
     },
     async stop() { await flush(); stopped = true; clearTimeout(timer); },
     hasConflict: () => error?.name === 'DraftConflictError',

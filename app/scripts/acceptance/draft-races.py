@@ -19,6 +19,8 @@ with sync_playwright() as p:
  d.locator('#signOut').click();d.locator('#localDraft').wait_for();d.locator('#localDraft').click();d.locator('#restoreDraft').click();expect(city(d)).to_have_value('Tab A retained')
  d.evaluate('''()=>{window.realTransaction=IDBDatabase.prototype.transaction;IDBDatabase.prototype.transaction=function(names,mode,...args){if(mode==='readwrite')throw new DOMException('Quota full','QuotaExceededError');return window.realTransaction.call(this,names,mode,...args);}}''')
  city(d).fill('After quota retry');expect(d.locator('#localState')).to_contain_text('Не удалось сохранить')
+ d.locator('#reload').click();expect(d.locator('#saveState')).to_contain_text('Quota full')
+ assert city(d).input_value()=='After quota retry'
  d.evaluate('()=>{IDBDatabase.prototype.transaction=window.realTransaction}')
  d.locator('#retryDraft').click();saved(d)
  d.reload();d.locator('#localDraft').click();d.locator('#restoreDraft').click();expect(city(d)).to_have_value('After quota retry')
@@ -26,7 +28,11 @@ with sync_playwright() as p:
  city(d).fill('Discard this pending edit');d.locator('#reload').click()
  expect(city(d)).not_to_have_value('Discard this pending edit');expect(d.locator('#save')).to_be_disabled()
  d.reload();d.locator('#localDraft').click();d.locator('#editor').wait_for(state='visible');assert d.locator('#draftRecovery[open]').count()==0
- print('PASS: real IndexedDB two-tab conflict, explicit reread recovery, sign-out preserves draft, quota failure/retry, pending reread cannot resurrect old work',flush=True)
+ source=d.request.get(BASE_URL+'content/data/site.json').json();source['profile']['city']='Imported document'
+ city(d).fill('Old pending document');d.locator('#importDraft').set_input_files({'name':'test-import.json','mimeType':'application/json','buffer':json.dumps(source).encode()})
+ expect(city(d)).to_have_value('Imported document');saved(d)
+ d.reload();d.locator('#localDraft').click();d.locator('#restoreDraft').click();expect(city(d)).to_have_value('Imported document')
+ print('PASS: real IndexedDB two-tab conflict, explicit reread recovery, sign-out preserves draft, quota failure/discard/retry, pending reread/import cannot resurrect old work',flush=True)
  c.close()
  # Unavailable storage leaves ordinary editor and export usable.
  c=b.new_context(reduced_motion='reduce');c.add_init_script("Object.defineProperty(window,'indexedDB',{value:undefined});sessionStorage.setItem('intro-seen','1')")
