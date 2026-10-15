@@ -10,7 +10,6 @@ import { useSiteSettings } from '../lib/settings'
    это способ написать. */
 const FALLBACK = {
   email: 'suleyman.sheripov@icloud.com',
-  phone: '+375 25 756 98 61',
   city: 'Минск',
   links: {
     behance: 'https://behance.net/suleymasheripov',
@@ -97,9 +96,6 @@ export function Contact({ profile }: { profile: Profile | null }) {
       timer.current = setTimeout(() => setCopied(false), 2400)
     } catch { setCopyError(true) }
   }
-  /* В наборе номер с пробелами, в ссылке без: иначе часть телефонов
-     не поднимает звонилку */
-  const tel = c.phone.replace(/[^\d+]/g, '')
 
   return (
     <section
@@ -157,9 +153,6 @@ export function Contact({ profile }: { profile: Profile | null }) {
         <span className="sr-only" role="status">{copied ? 'Адрес почты скопирован' : copyError ? `Не удалось скопировать. Адрес: ${c.email}` : ''}</span>
         </div>
         <ul className="contact-links">
-          <Row label="Телефон">
-            <a className="inline-flex min-h-8 items-center" href={`tel:${tel}`}>{c.phone}</a>
-          </Row>
           <Row label="Город"><span className="inline-flex min-h-8 items-center">{c.city}</span></Row>
           <Row label="Ещё работы" className="contact-social">
             <div className="flex flex-wrap gap-x-6">

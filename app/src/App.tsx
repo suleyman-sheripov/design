@@ -5,6 +5,7 @@ import { Colophon, Contact } from './components/Contact'
 import { Cursor } from './components/Cursor'
 import { Experience } from './components/Experience'
 import { Hero } from './components/Hero'
+import { HeaderContacts } from './components/HeaderContacts'
 import { CURTAIN_FADE_MS, Curtain, Intro } from './components/Intro'
 import { Lockup } from './components/Lockup'
 import { Skills } from './components/Skills'
@@ -82,7 +83,10 @@ export default function App() {
         <a href="#" aria-label={`${profile.name} — на главную`} className="brand-link">
           <Lockup key={landed?'home':'placeholder'} animated={landed} className={`header-lockup ${landed?'':'invisible'}`} aria-hidden="true" />
         </a>
-        <nav aria-label="Разделы страницы" className="header-nav"><a href="#work">Работы <span>↗</span></a>{settings.showExperience && <a href="#experience">Обо мне</a>}<a href={settings.resume} className="header-contact" target="_blank" rel="noopener noreferrer">Резюме <span>↗</span></a></nav>
+        <div className="header-actions">
+          <nav aria-label="Разделы страницы" className="header-nav"><a href="#work">Работы <span>↗</span></a>{settings.showExperience && <a href="#experience">Обо мне</a>}<a href={settings.resume} className="header-contact" target="_blank" rel="noopener noreferrer">Резюме <span>↗</span></a></nav>
+          <HeaderContacts profile={profile} />
+        </div>
       </header>
       <main inert={stage!=='live'}>
         <Hero start={stage==='live'} profile={profile} />
