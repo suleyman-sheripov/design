@@ -83,10 +83,10 @@ test('last removal gives empty gallery, no cover change; max 100 enforced',()=>{
 const fixture=()=>JSON.parse(readFileSync(new URL('../../content/data/site.json',import.meta.url),'utf8'));
 test('reload cannot let an old upload completion unlock saving while a new upload is pending', async()=>{
   const source=readFileSync(new URL('../public/admin/admin.js',import.meta.url),'utf8');
-  const loadSource=source.slice(source.indexOf('async function load()'),source.indexOf('/* Стабильная идентичность'));
+  const loadSource=source.slice(source.indexOf('async function load('),source.indexOf('/* Стабильная идентичность'));
   const counterSource=source.slice(source.indexOf('function setImageJobsPending'),source.indexOf('\nstart();'));
   const save={disabled:false};
-  const ctx={local:false,github:{load:async()=>({data:fixture(),head:'new',files:new Set()})},documentEpoch:0,
+  const ctx={draftQueue:null,draftBlocked:false,connectDraft:async()=>{},local:false,github:{load:async()=>({data:fixture(),head:'new',files:new Set()})},documentEpoch:0,
     defaultServices:[],stampProjectIds(){},serialize:JSON.stringify,history:{clear(){}},clearUploads(){},
     pendingImageJobs:1,liveEditor:{},render(){},setDirty(){},say(){},ui:{loadState:{},saveState:{}},el:()=>save,dirty:true,busy:false};
   vm.createContext(ctx);vm.runInContext(loadSource+'\n'+counterSource,ctx);
