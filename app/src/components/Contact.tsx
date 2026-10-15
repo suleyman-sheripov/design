@@ -15,6 +15,7 @@ const FALLBACK = {
   links: {
     behance: 'https://behance.net/suleymasheripov',
     dribbble: 'https://dribbble.com/kilus',
+    linkedin: '',
   },
 }
 
@@ -164,6 +165,7 @@ export function Contact({ profile }: { profile: Profile | null }) {
             <div className="flex flex-wrap gap-x-6">
               <a className="inline-flex min-h-8 items-center gap-2" href={c.links.behance} target="_blank" rel="noopener">Behance <span aria-hidden="true">↗</span></a>
               <a className="inline-flex min-h-8 items-center gap-2" href={c.links.dribbble} target="_blank" rel="noopener">Dribbble <span aria-hidden="true">↗</span></a>
+              {c.links.linkedin?.trim() && <a className="inline-flex min-h-8 items-center gap-2" href={c.links.linkedin.trim()} target="_blank" rel="noopener noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>}
             </div>
           </Row>
         </ul>

@@ -292,6 +292,7 @@ const PROFILE_FIELDS = [
   ['phone', 'Телефон'],
   ['links.behance', 'Behance'],
   ['links.dribbble', 'Dribbble'],
+  ['links.linkedin', 'LinkedIn'],
 ];
 
 function render() {
@@ -305,7 +306,7 @@ function render() {
   renderList(el('serviceRows'),el('servicesEmpty'),data.services ||= structuredClone(defaultServices),(s,i,list)=>row(s.title||'Услуга',i,list,[field('Название',s.title,v=>s.title=v),field('Ключ',s.id,v=>s.id=v,{hint:'Латиница и дефис, уникальный адрес тега'}),select('Группа',['brand','digital','visual'],s.group,v=>s.group=v,{labels:{brand:'Бренд и носители',digital:'Цифровые продукты',visual:'Визуальный контент'}}),select('Тег в Hero',['yes','no'],s.hero?'yes':'no',v=>s.hero=v==='yes',{labels:{yes:'Показывать',no:'Скрыть'}}),field('Описание',s.detail,v=>s.detail=v,{tag:'textarea',wide:true})]));
   ui.profileFields.replaceChildren(
     ...PROFILE_FIELDS.map(([path, label]) =>
-      field(label, pick(data.profile, path), value => put(data.profile, path, value))),
+      field(label, pick(data.profile, path), value => put(data.profile, path, value), path === 'links.linkedin' ? { type: 'url', hint: 'Необязательно. Ссылка на профиль с https://. Пустое поле скрывает LinkedIn на сайте.' } : {})),
   );
 
   renderList(ui.trackRows, el('trackEmpty'), data.profile.track ||= [], trackRow);

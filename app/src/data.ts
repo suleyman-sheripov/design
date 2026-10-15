@@ -20,7 +20,7 @@ export type Profile = {
   city: string
   email: string
   phone: string
-  links: { behance: string; dribbble: string }
+  links: { behance: string; dribbble: string; linkedin?: string }
   track: Job[]
   tools: Tool[]
 }

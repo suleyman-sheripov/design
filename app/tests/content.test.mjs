@@ -74,3 +74,13 @@ test('401 и 403 дают понятную ошибку и не раскрыва
     await assert.rejects(f.client.head(),e=>!e.message.includes(auth.token));
   }
 });
+
+test('LinkedIn is optional for existing content and accepts an empty field or an HTTPS URL only',()=>{
+  for (const value of [undefined, '', '   ', 'https://www.linkedin.com/in/test-profile/']) {
+    const d=copy();if(value===undefined)delete d.profile.links.linkedin;else d.profile.links.linkedin=value;
+    assert.doesNotThrow(()=>validateContent(d));
+  }
+  for (const value of ['javascript:alert(1)','http://www.linkedin.com/in/test/','www.linkedin.com/in/test/',null,42,{}]) {
+    const d=copy();d.profile.links.linkedin=value;assert.throws(()=>validateContent(d),/LinkedIn/);
+  }
+});

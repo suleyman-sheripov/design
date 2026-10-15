@@ -177,3 +177,11 @@ test('A denied indexedDB getter does not crash store construction or prevent ret
     if(original)Object.defineProperty(globalThis,'indexedDB',original);else delete globalThis.indexedDB;
   }
 });
+
+test('LinkedIn survives real draft storage, including an unfinished URL while publication remains strict',async()=>{
+  const db=store(), s=snapshot();s.document.profile.links.linkedin='https://www.linkedin.com/in/test-profile/';
+  await db.write(key,0,s);assert.equal((await db.read(key)).snapshot.document.profile.links.linkedin,s.document.profile.links.linkedin);
+  s.document.profile.links.linkedin='https://';await db.write(key,1,s);
+  const restored=(await db.read(key)).snapshot.document;assert.equal(restored.profile.links.linkedin,'https://');
+  assert.throws(()=>validateContent(restored),/LinkedIn/);
+});

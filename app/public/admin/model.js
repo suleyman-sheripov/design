@@ -53,6 +53,13 @@ export function validateContent(data) {
     try { if (new URL(p.links[key]).protocol !== 'https:') fail('Ссылки должны начинаться с https://.'); }
     catch { fail('Проверь ссылку ' + key + '.'); }
   }
+  if (p.links.linkedin !== undefined) {
+    str(p.links.linkedin, 'LinkedIn');
+    if (p.links.linkedin.trim()) {
+      try { if (new URL(p.links.linkedin).protocol !== 'https:') fail('Проверь ссылку LinkedIn: она должна начинаться с https://.'); }
+      catch { fail('Проверь ссылку LinkedIn: она должна начинаться с https://.'); }
+    }
+  }
   list(p.track, 'Опыт'); list(p.tools, 'Инструменты');
   for (const job of p.track) for (const key of ['client','role','kind','period','note']) str(job[key], key, key === 'client');
   for (const tool of p.tools) {

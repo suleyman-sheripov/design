@@ -13,6 +13,7 @@ export function checkDraftDocument(data) {
   if (!looksLikeDraft(data) || !plain(data.profile.links) || !Array.isArray(data.profile.track) || !Array.isArray(data.profile.tools)) invalid();
   const strings = (object, keys) => plain(object) && keys.every(key => typeof object[key] === 'string');
   if (!strings(data.profile, ['name', 'role', 'city', 'email', 'phone']) || !strings(data.profile.links, ['behance', 'dribbble'])) invalid();
+  if (data.profile.links.linkedin !== undefined && typeof data.profile.links.linkedin !== 'string') invalid();
   if (!data.profile.track.every(v => strings(v, ['client', 'role', 'kind', 'period', 'note'])) || !data.profile.tools.every(v => strings(v, ['name', 'for', 'logo']))) invalid();
   if (data.services !== undefined && (!Array.isArray(data.services) || !data.services.every(plain))) invalid();
   if (data.settings !== undefined) {
