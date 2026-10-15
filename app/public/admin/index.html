@@ -22,8 +22,10 @@
     <span class="bar-title">Содержимое сайта</span>
     <span class="bar-repo" id="barRepo" hidden></span>
     <div class="bar-actions" id="barActions" hidden>
+      <span class="bar-state" id="localState" role="status" aria-live="polite" hidden></span>
+      <button class="btn-ghost" id="retryDraft" type="button" hidden>Повторить локальное сохранение</button>
       <span class="bar-state" id="saveState" role="status" aria-live="polite"></span>
-      <button class="btn-ghost" id="preview" type="button">Предпросмотр ↗</button>
+      <button class="btn-ghost" id="preview" type="button">Предпросмотр <svg class="link-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.5" /></svg></button>
       <button class="btn-ghost" id="undo" type="button" disabled>Отменить правку</button>
       <button class="btn-ghost" id="redo" type="button" disabled>Повторить правку</button>
       <button class="btn-ghost" id="backup" type="button">Скачать копию</button>
@@ -83,7 +85,7 @@
 
     <p class="note" id="loadState" role="status" aria-live="polite"></p>
 
-    <nav class="editor-nav" aria-label="Разделы редактора"><a href="#live">Живой редактор</a><a href="#settings">Страница и стиль</a><a href="#cases">Кейсы</a><a href="#services">Услуги</a><a href="#profile">Контакты</a><a href="#experience">Опыт</a><a href="../" target="_blank" rel="noopener">Открыть сайт ↗</a></nav>
+    <nav class="editor-nav" aria-label="Разделы редактора"><a href="#live">Живой редактор</a><a href="#settings">Страница и стиль</a><a href="#cases">Кейсы</a><a href="#services">Услуги</a><a href="#profile">Контакты</a><a href="#experience">Опыт</a><a href="../" target="_blank" rel="noopener">Открыть сайт <svg class="link-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" stroke-width="1.5" /></svg></a></nav>
 
     <!-- Живой редактор: тот же data, что и вся форма ниже, только
          виден результат сразу на самом сайте. Первая версия покрывает
@@ -91,7 +93,7 @@
          остальная форма ниже никуда не делась и работает как раньше. -->
     <section class="block" id="live">
       <h2>Живой редактор</h2>
-      <p class="note">Выберите карточку проекта прямо на сайте слева — справа появятся её заголовок и превью. Изменения видно сразу, без сохранения. Отменить правку можно кнопкой вверху страницы.</p>
+      <p class="note">Выберите карточку проекта в предпросмотре — рядом или ниже появятся её заголовок, обложки и галерея. Изменения видно сразу, без сохранения. Отменить правку можно кнопкой вверху страницы.</p>
       <div id="liveEditorMount"></div>
     </section>
 
@@ -126,6 +128,15 @@
   </div>
 </main>
 
+<dialog id="draftRecovery" class="draft-recovery" aria-labelledby="draftRecoveryTitle" aria-describedby="draftRecoveryText">
+  <h2 id="draftRecoveryTitle">Локальный черновик</h2>
+  <p id="draftRecoveryText"></p>
+  <p class="field-hint">Эта копия хранится только в этом браузере. Она не опубликована на GitHub.</p>
+  <div class="live-cover-actions">
+    <button id="restoreDraft" type="button" class="btn-solid" autofocus>Восстановить копию</button>
+    <button id="keepCurrent" type="button" class="btn-ghost">Оставить актуальные данные</button>
+  </div>
+</dialog>
 <script type="module" src="admin.js"></script>
 </body>
 </html>

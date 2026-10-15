@@ -1,3 +1,4 @@
+import { createDraftStore, createDraftQueue, captureDraft, validateSnapshot, restoreUploads, workspaceKey, matchesDraftBase } from './draft-store.js';
 import { GitHub } from './github.js';
 import { createHistory, wireTextCommit } from './history.js';
 import { SHOTS_DIR, safeName, validateContent, imageNames, ensureShotIds } from './model.js';
@@ -33,6 +34,56 @@ let liveEditor = null;
    заменить целиком, пока файл обрабатывался, устаревшее завершение
    не имеет права дописаться поверх уже другой версии. */
 let documentEpoch = 0;
+const draftStore = createDraftStore();
+let draftQueue = null, draftBlocked = false;
+function localStatus({ state, error }) {
+  say(el('localState'), state === 'saving' ? 'Сохраняю на этом устройстве…' : state === 'saved' ? 'Черновик сохранён на этом устройстве' : 'Не удалось сохранить черновик: ' + error.message,
+    'bar-state' + (state === 'error' ? ' bar-state--bad' : ''));
+  el('retryDraft').hidden = state !== 'error' || error?.name === 'DraftConflictError';
+}
+function scheduleDraft(immediate = false) {
+  if (!data || !draftQueue || draftBlocked) return;
+  try { draftQueue.schedule(captureDraft({ data, base: JSON.parse(saved), baseHead: head, uploads, knownFiles }), immediate); }
+  catch (error) { draftQueue.fail(error); }
+}
+async function connectDraft() {
+  const key = workspaceKey(config.content, local);
+  draftQueue = null; draftBlocked = false;
+  try {
+    const record = await draftStore.read(key);
+    if (!Number.isSafeInteger(record.revision) || record.revision < 0) throw Error('Повреждена ревизия черновика. Скачай копию перед дальнейшей работой.');
+    const queue = createDraftQueue({ store: draftStore, key, revision: record.revision, onState: localStatus });
+    draftQueue = queue;
+    if (!record.snapshot) { say(el('localState'), '', 'bar-state'); return; }
+    const snapshot = validateSnapshot(record.snapshot);
+    const diverged = !matchesDraftBase(snapshot, head, data);
+    const restore = await chooseDraft(snapshot.savedAt, diverged);
+    if (!restore) {
+      await queue.discard();
+      draftQueue = createDraftQueue({ store: draftStore, key, revision: record.revision + 1, onState: localStatus });
+      say(el('localState'), '', 'bar-state'); return;
+    }
+    const restored = await restoreUploads(snapshot);
+    clearUploads();
+    for (const [name, image] of restored) uploads.set(name, image);
+    data = structuredClone(snapshot.document); saved = serialize(snapshot.base); head = snapshot.baseHead;
+    knownFiles = new Set(snapshot.knownFiles); documentEpoch++; stampProjectIds(); history.clear();
+    setDirty(serialize(data) !== saved);
+    localStatus({ state: 'saved' });
+    if (diverged) say(ui.loadState, 'Удалённая база изменилась. Открыта локальная копия. Прямое сохранение заблокировано проверкой GitHub; скачай копию и перенеси нужные правки в актуальные данные.', 'note');
+  } catch (error) { draftBlocked = true; localStatus({ state: 'error', error }); }
+}
+function chooseDraft(time, diverged) {
+  const dialog = el('draftRecovery');
+  el('draftRecoveryText').textContent = 'Найдена копия от ' + new Date(time).toLocaleString('ru-RU') + '. ' + (diverged ? 'База на GitHub или исходные данные изменились. Восстановление откроет прежнюю копию без слияния; отправка поверх новой базы не разрешена.' : 'Восстановить тексты и новые изображения?');
+  return new Promise(resolve => {
+    const finish = result => { dialog.close(); resolve(result); };
+    el('restoreDraft').onclick = () => finish(true);
+    el('keepCurrent').onclick = () => finish(false);
+    dialog.oncancel = e => { e.preventDefault(); }; // an explicit choice protects the stored copy
+    dialog.showModal();
+  });
+}
 /* Сколько изображений сейчас обрабатывается живым редактором.
    Публикация блокируется, пока это число больше нуля — иначе
    «Сохранить» могло бы уйти раньше, чем закончится загрузка, и
@@ -51,6 +102,17 @@ function updateSaveEnabled() {
 start();
 async function start() {
   el('save').addEventListener('click', save);
+  el('retryDraft').addEventListener('click', async () => {
+    if (draftBlocked) { await connectDraft(); render(); }
+    else {
+      try {
+        draftQueue?.schedule(captureDraft({ data, base: JSON.parse(saved), baseHead: head, uploads, knownFiles }));
+        await draftQueue?.retry();
+      } catch (error) { draftQueue?.fail(error); }
+    }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) void draftQueue?.flush(); });
+  addEventListener('pagehide', () => { void draftQueue?.flush(); });
   try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('admin-token'); } catch { /* Legacy token cleanup. */ }
   el('preview').addEventListener('click', () => {
     try { sessionStorage.setItem('portfolio-preview',JSON.stringify(buildPreviewPayload())); window.open('../?editor-preview=1','_blank'); }
@@ -64,7 +126,8 @@ async function start() {
       if(file.size>2*1024*1024)throw Error('JSON больше 2 МБ.');
       const next=validateContent(JSON.parse(await file.text()));
       if(!confirm('Заменить текущий черновик содержимым файла?'))return;
-      data=next;documentEpoch++;stampProjectIds();history.clear();setDirty(true);render();
+      await draftQueue?.flush();
+      data=next;documentEpoch++;stampProjectIds();history.clear();setDirty(true);render();scheduleDraft(true);
     }
     catch(err){say(ui.saveState,err.message,'bar-state bar-state--bad')} finally {e.target.value=''}
   });
@@ -72,23 +135,25 @@ async function start() {
     el('localDraft').hidden=false;
     el('localDraft').addEventListener('click',async()=>{setBusy(true);try {local=true;await load();ui.gate.hidden=true;ui.editor.hidden=false;ui.barActions.hidden=false;ui.barRepo.hidden=false;ui.barRepo.textContent='Локальный черновик · без публикации';el('save').textContent='Скачать JSON';el('historyLink').hidden=true;}catch(err){ui.gateError.textContent=err.message;local=false}finally{setBusy(false)}});
   }
-  el('signOut').addEventListener('click', () => {
+  el('signOut').addEventListener('click', async () => {
     history.commit();
-    if (dirty && !confirm('Выйти и потерять несохранённые правки?')) return;
+    await draftQueue?.flush();
+    if ((draftBlocked || draftQueue?.unsafe() || pendingImageJobs) && !confirm('Не всё сохранено на этом устройстве. Выйти? Сначала можно скачать копию.')) return;
+    await draftQueue?.stop();
     try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('admin-token'); } catch { /* Хранилище может быть закрыто. */ }
-    clearUploads(); github = null; data = null;
+    documentEpoch++; clearUploads(); github = null; data = null; dirty = false; draftBlocked = false; draftQueue = null;
     location.reload();
   });
   el('reload').addEventListener('click', async () => {
     history.commit();
     if (dirty && !confirm('Перечитать и потерять несохранённые правки? Сначала можно скачать копию.')) return;
     setBusy(true);
-    try { await load(); } catch (err) { say(ui.saveState, err.message, 'bar-state bar-state--bad'); }
+    try { await load({ discard: true }); } catch (err) { say(ui.saveState, err.message, 'bar-state bar-state--bad'); }
     finally { setBusy(false); }
   });
   el('backup').addEventListener('click', exportBackup);
   for (const btn of document.querySelectorAll('[data-add]')) btn.addEventListener('click', () => add(btn.dataset.add));
-  addEventListener('beforeunload', e => { if (dirty || busy) { e.preventDefault(); e.returnValue = ''; } });
+  addEventListener('beforeunload', e => { if (busy || pendingImageJobs || draftBlocked || draftQueue?.unsafe()) { e.preventDefault(); e.returnValue = ''; } });
   try {
     const response = await fetch('../site-config.json', {cache:'no-store'});
     if (!response.ok) throw new Error('Не удалось прочитать настройки сайта.');
@@ -119,12 +184,17 @@ async function start() {
     finally { setBusy(false); }
   });
 }
-async function load() {
+async function load({ discard = false } = {}) {
   const loaded = local ? await (async()=>{const r=await fetch('../content/data/site.json',{cache:'no-store'});if(!r.ok)throw Error('Локальные данные недоступны.');const data=validateContent(await r.json());return {data,head:'local',files:new Set(imageNames(data).map(n=>SHOTS_DIR+'/'+n+'.webp'))}})() : await github.load();
+  if (discard && draftQueue && !draftBlocked && !draftQueue.hasConflict()) await draftQueue.discard();
+  else await draftQueue?.stop();
   head = loaded.head; data = loaded.data; knownFiles = loaded.files; documentEpoch++;
   data.services ||= structuredClone(defaultServices);
+  data.settings ||= {};
   stampProjectIds();
   saved = serialize(data); history.clear(); clearUploads();
+  say(ui.loadState, '', 'note');
+  await connectDraft();
   // Jobs from the previous document still finish asynchronously. Keep their
   // count until finally runs, so they cannot decrement a newer job's count.
   /* Один раз за сессию: до первой успешной load() строить снимок
@@ -136,8 +206,7 @@ async function load() {
     setStatus: (message, bad) => say(ui.saveState, message, bad ? 'bar-state bar-state--bad' : 'bar-state'),
     getEpoch: () => documentEpoch, setImageJobsPending, mediaLibrary,
   });
-  render(); setDirty(false);
-  say(ui.loadState, '', 'note');
+  render(); setDirty(serialize(data) !== saved);
 }
 /* Стабильная идентичность проекта для живого редактора: slug можно
    переименовать прямо в форме ниже, а выбранная в инспекторе карточка
@@ -163,9 +232,13 @@ async function save() {
     if(local) {exportBackup();say(ui.saveState,'Копия скачана. Это локальный черновик; сайт и GitHub не изменены.','bar-state');return;}
     const next = serialize(data);
     if (next === saved && !uploads.size) { setDirty(false); return; }
+    await draftQueue?.flush();
     head = await github.save(data, uploads, head);
-    for (const name of uploads.keys()) knownFiles.add(`${SHOTS_DIR}/${name}.webp`);
+    const used = new Set(imageNames(data));
+    for (const name of uploads.keys()) if (used.has(name)) knownFiles.add(`${SHOTS_DIR}/${name}.webp`);
     saved = next; history.clear(); clearUploads(); setDirty(false); render();
+    try { await draftQueue?.discard(); await connectDraft(); }
+    catch (error) { draftBlocked = true; localStatus({ state: 'error', error }); }
     say(ui.saveState, 'Сохранено одним коммитом. Обнови сайт через несколько минут: GitHub кеширует файлы. Сборка не требуется.', 'bar-state');
   } catch (err) { say(ui.saveState, err.message, 'bar-state bar-state--bad'); }
   finally { setBusy(false); }
@@ -189,7 +262,6 @@ function exportBackup() {
    внутри обработчика кнопки «Предпросмотр»; теперь им же стартует
    iframe живого редактора — форма одна, а не расходящиеся копии. */
 function buildPreviewPayload() {
-  validateContent(data);
   return {data,images:Object.fromEntries([...uploads].map(([n,v])=>[n,v.url])),mediaBase:local?'':github.raw(SHOTS_DIR+'/')};
 }
 function clearUploads() { for (const value of uploads.values()) URL.revokeObjectURL(value.url); uploads.clear(); }
@@ -562,6 +634,7 @@ function notifyChange() {
   el('undo').disabled = busy || !history.canUndo();
   el('redo').disabled = busy || !history.canRedo();
   liveEditor?.notify(data);
+  scheduleDraft();
 }
 
 function setDirty(value) {

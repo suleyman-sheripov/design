@@ -303,7 +303,7 @@ export function initLiveEditor({
     const hint = document.createElement('p');
     hint.className = 'live-inspector-hint';
     hint.textContent = mode === 'select'
-      ? 'Выберите карточку проекта в предпросмотре слева — здесь появятся её настройки.'
+      ? 'Выберите карточку проекта в предпросмотре — здесь появятся её настройки.'
       : 'Режим проверки: ссылки работают как на обычном сайте. Переключитесь на «Выбрать элемент», чтобы редактировать.';
     inspector.append(hint);
   }

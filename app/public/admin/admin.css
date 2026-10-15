@@ -566,3 +566,37 @@ html { scroll-behavior:smooth; scroll-padding-top:10rem; }
 .live-gallery-actions { display:flex; flex-wrap:wrap; gap:.35rem; }
 .live-gallery-actions button { font-size:.75rem; padding:.45rem .6rem; }
 .live-gallery .field { min-width:0; }
+
+/* Local persistence and recovery use a distinct status from GitHub publication. */
+#localState { flex-basis:100%; max-width:none; }
+.draft-recovery {
+  width:min(560px,calc(100vw - 2rem));
+  max-height:calc(100dvh - 2rem);
+  overflow:auto;
+  padding:1.5rem;
+  border:1px solid var(--rule);
+  border-radius:var(--radius);
+  background:var(--paper-raised);
+  color:var(--ink);
+}
+.draft-recovery::backdrop { background:rgba(22,19,15,.45); }
+.draft-recovery h2 { margin-top:0; line-height:1.25; }
+.bar-state,.media-dialog-head h3,.live-inspector-head .project-name { overflow-wrap:anywhere; }
+.live-stage > *,.grid > *,.live-inspector-head > div { min-width:0; }
+.media-dialog { max-height:calc(100dvh - 2rem); }
+.media-grid { padding:.35rem; }
+.media-drop:focus-within { outline:2px solid var(--moss); outline-offset:3px; }
+.live-gallery-actions button { min-height:44px; }
+@media(max-width:760px) {
+  /* A wrapping sticky command bar used to hide nearly half the viewport. */
+  .bar { position:static; }
+  .bar-in { gap:.5rem; }
+  .bar-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; margin-left:0; }
+  .bar-actions .bar-state,.bar-actions #retryDraft { grid-column:1/-1; max-width:none; }
+  .bar-actions button { min-height:44px; padding:.5rem .65rem; letter-spacing:0; }
+  .editor-nav { gap:.5rem 1rem; padding:.75rem 0; }
+  .block { scroll-margin-top:1rem; }
+  .live-inspector { padding:1rem; }
+  .live-inspector-hint { padding:.75rem; }
+}
+.link-icon { display:inline-block; width:1em; height:1em; vertical-align:-.1em; }
