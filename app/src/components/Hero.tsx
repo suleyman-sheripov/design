@@ -22,7 +22,7 @@ export function Hero({ start, profile }: { start: boolean; profile: Profile }) {
         </h1>
         <div className="kinetic-art"><LoomArt active={start} /></div>
         <div className="kinetic-actions">
-          <a className="kinetic-work-link" href="#work">{settings.heroWork} <span aria-hidden="true">↘</span></a>
+          <a className="kinetic-work-link" href="#work">{settings.heroWork} <span aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 5 19 19M5 19h14V5" stroke="currentColor" strokeWidth="1.5" /></svg></span></a>
           <Cta href="#contact">{settings.heroContact}</Cta>
         </div>
       </div>

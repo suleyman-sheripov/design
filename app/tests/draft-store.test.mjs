@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { IDBFactory, IDBDatabase } from 'fake-indexeddb';
+import { IDBFactory, IDBDatabase, IDBObjectStore } from 'fake-indexeddb';
 import { createDraftStore, createDraftQueue, captureDraft, validateSnapshot, restoreUploads, workspaceKey, matchesDraftBase } from '../public/admin/draft-store.js';
 import { imageNames, SHOTS_DIR, validateContent } from '../public/admin/model.js';
 import { GitHub } from '../public/admin/github.js';
@@ -140,4 +140,16 @@ test('Capture failure during a slow write never announces false success; retry p
 });
 test('Unavailable IndexedDB rejects without crashing manual editing',async()=>{
   const db=createDraftStore(null);await assert.rejects(db.read(key),/IndexedDB недоступна/);
+});
+
+test('An aborted transaction after put cannot persist either a partial document or its new Blob',async()=>{
+  const db=store();await db.write(key,0,snapshot('committed'));
+  const original=IDBObjectStore.prototype.put;
+  try {
+    IDBObjectStore.prototype.put=function(...args){const req=original.apply(this,args);this.transaction.abort();return req;};
+    const next=snapshot('aborted');next.document.projects.projects[0].cover='transaction-image';
+    next.assets['transaction-image']=new Blob([new Uint8Array([1,2,3])],{type:'image/webp'});
+    await assert.rejects(db.write(key,1,next));
+  } finally {IDBObjectStore.prototype.put=original;}
+  const record=await db.read(key);assert.equal(record.revision,1);assert.equal(record.snapshot.document.projects.projects[0].title,'committed');
 });
