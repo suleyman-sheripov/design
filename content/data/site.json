@@ -88,7 +88,8 @@
         "ratio": "wide",
         "shots": [],
         "status": "draft",
-        "category": "commercial"
+        "category": "commercial",
+        "id": "16613a75-efc1-4fa4-9893-98d5a9580416"
       },
       {
         "slug": "dr-green",
@@ -101,7 +102,8 @@
         "ratio": "wide",
         "shots": [],
         "status": "draft",
-        "category": "commercial"
+        "category": "commercial",
+        "id": "6a680ab6-4186-41c5-a0af-6d429ccf29f7"
       },
       {
         "slug": "pro-it",
@@ -114,7 +116,8 @@
         "ratio": "wide",
         "shots": [],
         "status": "draft",
-        "category": "teaching"
+        "category": "teaching",
+        "id": "0f5d573e-2ebe-4d71-bb00-89fbe5396891"
       },
       {
         "slug": "billions-lottery",
@@ -127,37 +130,43 @@
         "ratio": "wide",
         "shots": [],
         "status": "draft",
-        "category": "commercial"
+        "category": "commercial",
+        "id": "e8c13881-2df2-4e07-962d-566db6eeffc7"
       },
       {
         "slug": "beautylab",
-        "title": "Beauty Lab",
+        "title": "QA ONLY — autosave acceptance",
         "kind": "Сайт салона красоты",
         "role": "UI/UX",
         "year": "2025",
         "note": "Путь до записи сокращён до двух кликов: услуга выбирается прямо из каталога, а не через отдельную форму.",
-        "cover": "beautylab-1-main",
+        "cover": "media-46035cc2-b835-4efa-9771-a6c296539970",
         "ratio": "wide",
         "shots": [
           {
             "file": "beautylab-1-main",
-            "alt": "Главная страница Beauty Lab"
+            "alt": "Главная страница Beauty Lab",
+            "id": "e66c108c-7521-4150-859b-7f9868fa53f3"
           },
           {
             "file": "beautylab-2-catalog",
-            "alt": "Каталог услуг Beauty Lab"
+            "alt": "Каталог услуг Beauty Lab",
+            "id": "4c3fa395-bedb-45d9-af77-cbb1a0160d5d"
           },
           {
             "file": "beautylab-3-service",
-            "alt": "Страница отдельной услуги Beauty Lab"
+            "alt": "Страница отдельной услуги Beauty Lab",
+            "id": "88465140-75ba-40a4-a474-ed8ad4172110"
           },
           {
             "file": "beautylab-4-contacts",
-            "alt": "Страница контактов Beauty Lab"
+            "alt": "Страница контактов Beauty Lab",
+            "id": "2e31d7bc-0637-4b91-b686-a81f333015d3"
           }
         ],
         "status": "published",
-        "category": "study"
+        "category": "study",
+        "id": "a5d691b1-8591-4990-881c-866a9cbfb3d2"
       },
       {
         "slug": "vasil",
@@ -171,23 +180,28 @@
         "shots": [
           {
             "file": "vasil-1-intro",
-            "alt": "Первый экран сайта о Василе Шаранговиче"
+            "alt": "Первый экран сайта о Василе Шаранговиче",
+            "id": "d09980c2-7706-4471-b183-0a3e2bb60466"
           },
           {
             "file": "vasil-2-home",
-            "alt": "Главная страница сайта о Василе Шаранговиче"
+            "alt": "Главная страница сайта о Василе Шаранговиче",
+            "id": "5d55e3a0-0d21-4636-b622-265c46fb5c5a"
           },
           {
             "file": "vasil-3-card",
-            "alt": "Страница отдельной картины"
+            "alt": "Страница отдельной картины",
+            "id": "6e87e6e8-b6e6-4790-9628-6d6d6953ba76"
           },
           {
             "file": "vasil-4-works",
-            "alt": "Список работ художника"
+            "alt": "Список работ художника",
+            "id": "73dc3cc5-470d-491a-88ef-3ffcd467973c"
           }
         ],
         "status": "published",
-        "category": "personal"
+        "category": "personal",
+        "id": "25bbc1f9-aa37-472f-9ede-a756ad367873"
       },
       {
         "slug": "multivarka",
@@ -201,23 +215,28 @@
         "shots": [
           {
             "file": "multivarka-1-intro",
-            "alt": "Стартовый экран мультиварки"
+            "alt": "Стартовый экран мультиварки",
+            "id": "6dc4db2e-270e-44c3-8c2b-5339743cea6d"
           },
           {
             "file": "multivarka-2-setup",
-            "alt": "Экран настройки готовки"
+            "alt": "Экран настройки готовки",
+            "id": "ab9d2705-0cff-49f7-a6d6-a7d0c90f6700"
           },
           {
             "file": "multivarka-3-process",
-            "alt": "Экран процесса готовки"
+            "alt": "Экран процесса готовки",
+            "id": "d88b4b23-497d-456c-846d-81008640bde8"
           },
           {
             "file": "multivarka-4-settings",
-            "alt": "Экран настроек прибора"
+            "alt": "Экран настроек прибора",
+            "id": "56c25e39-9ac7-4c11-b11e-406ee8e56cb7"
           }
         ],
         "status": "published",
-        "category": "personal"
+        "category": "personal",
+        "id": "e3e89590-0ff2-418f-97fd-09dc1b0c4999"
       },
       {
         "slug": "yotoys",
@@ -231,15 +250,18 @@
         "shots": [
           {
             "file": "yotoys-1-mockup",
-            "alt": "Мокап экрана регистрации YoToys"
+            "alt": "Мокап экрана регистрации YoToys",
+            "id": "c05de2d0-c243-4637-9267-838b28e9f72e"
           },
           {
             "file": "yotoys-2-screen",
-            "alt": "Экран регистрации YoToys"
+            "alt": "Экран регистрации YoToys",
+            "id": "6971e7a9-dfcb-4871-b7d8-110e9ae72ae8"
           }
         ],
         "status": "published",
-        "category": "personal"
+        "category": "personal",
+        "id": "dc9342c9-5d3f-4a8f-b90b-5d3f7c5673fc"
       },
       {
         "slug": "checkout",
@@ -253,15 +275,18 @@
         "shots": [
           {
             "file": "checkout-2-screen",
-            "alt": "Экран ввода данных карты"
+            "alt": "Экран ввода данных карты",
+            "id": "4ea01ab0-fae6-45bc-9b35-b288539fe213"
           },
           {
             "file": "checkout-1-mockup",
-            "alt": "Мокап экрана оплаты на телефоне"
+            "alt": "Мокап экрана оплаты на телефоне",
+            "id": "286afb7f-b6b4-49bb-8ca8-d2c671687993"
           }
         ],
         "status": "published",
-        "category": "personal"
+        "category": "personal",
+        "id": "bc5f92a5-e742-4014-b333-4cc9804a5064"
       }
     ]
   },
@@ -357,5 +382,6 @@
       "hero": true,
       "detail": "Анимация графики и ролики в After Effects."
     }
-  ]
+  ],
+  "settings": {}
 }
