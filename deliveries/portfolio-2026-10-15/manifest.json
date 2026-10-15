@@ -1,0 +1,23 @@
+{
+  "filename": "SHERIPOV-portfolio-all-2026-10-15.zip",
+  "bytes": 209636263,
+  "sha256": "70b5d9cb675603a0e62971a748fb58a218dc7010fc5f4f153111d90029fc5d9a",
+  "files": 991,
+  "parts": [
+    {
+      "filename": "portfolio.zip.part-01",
+      "bytes": 83886080,
+      "sha256": "691e474ac2ba03d2ec6bc2f43b0d8a8f5abf720d0c65bc8415b3d0a089dfc225"
+    },
+    {
+      "filename": "portfolio.zip.part-02",
+      "bytes": 83886080,
+      "sha256": "cca43ff05453b80d6dd33dd92121dce1183ed15600ca0e5018204f715dd41234"
+    },
+    {
+      "filename": "portfolio.zip.part-03",
+      "bytes": 41864103,
+      "sha256": "7ed742f5aea79f0224d50271dcd411463098c64c809bc30014e5461d97d4af84"
+    }
+  ]
+}

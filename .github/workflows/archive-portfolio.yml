@@ -1,0 +1,45 @@
+name: Publish portfolio materials archive
+
+on:
+  push:
+    branches: [archive/portfolio-2026-10-15]
+    paths:
+      - deliveries/portfolio-2026-10-15/**
+      - .github/workflows/archive-portfolio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: portfolio-materials-2026-10-15
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore and verify archive
+        run: python3 deliveries/portfolio-2026-10-15/restore_archive.py --output "$RUNNER_TEMP/SHERIPOV-portfolio-all-2026-10-15.zip"
+      - name: Publish downloadable ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE_TAG: portfolio-materials-2026-10-15
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "$ARCHIVE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$ARCHIVE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Сайт портфолио — все материалы, 15 октября 2026" \
+              --notes-file deliveries/portfolio-2026-10-15/README.md \
+              --latest=false
+          fi
+          gh release upload "$ARCHIVE_TAG" \
+            "$RUNNER_TEMP/SHERIPOV-portfolio-all-2026-10-15.zip" \
+            deliveries/portfolio-2026-10-15/archive.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
