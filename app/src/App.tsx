@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { type Profile, type Project } from './data'
 import { initialContent, content } from './lib/content'
 import { Colophon, Contact } from './components/Contact'
@@ -64,22 +64,31 @@ export default function App() {
     void content().then(d=>{if(active){setSite(d);setProfile(d.profile);setProjects(d.projects.projects.filter(p=>p.status==='published'))}}).catch(stale)
     return ()=>{active=false;window.removeEventListener('content-fallback',stale);stop()}
   },[bridge.active])
+  const introTimers = useRef<ReturnType<typeof setTimeout>[]>([])
+  const clearIntroTimers = useCallback(() => {
+    introTimers.current.forEach(clearTimeout)
+    introTimers.current = []
+  }, [])
+  useEffect(() => clearIntroTimers, [clearIntroTimers])
   const finishIntro = useCallback(()=>{
+    clearIntroTimers()
     rememberIntro();setStage('landing')
-    setTimeout(()=>setStage('live'),LANDING_MS)
-    setTimeout(()=>setCurtain(false),CURTAIN_FADE_MS+220)
-  },[])
+    introTimers.current = [
+      setTimeout(()=>setStage('live'),LANDING_MS),
+      setTimeout(()=>setCurtain(false),CURTAIN_FADE_MS+220),
+    ]
+  },[clearIntroTimers])
   const landed = stage !== 'intro'
   const project = projects.find(p=>p.slug===route.slug)
   const next = project && projects.length > 1 ? projects[(projects.indexOf(project)+1)%projects.length] : undefined
   return <SettingsContext.Provider value={{settings,services:site.services ?? [...SERVICES]}}>
   <EditBridgeContext.Provider value={bridge}>
     {new URLSearchParams(location.search).has('editor-preview') && <div className="preview-notice">Предпросмотр · изменения ещё не опубликованы</div>}
-    <GooDefs /><Cursor />
+    <GooDefs />{stage==='live' && <Cursor />}
     {curtain && <Curtain leaving={landed} />}
     {stage==='intro' && <Intro onDone={finishIntro} />}
     <div className="portfolio-home" hidden={route.slug !== null}>
-      <header inert={stage!=='live'} className="site-header">
+      <header inert={stage!=='live'} className={`site-header ${curtain && landed ? 'intro-landing' : ''}`}>
         <a href="#" aria-label={`${profile.name} — на главную`} className="brand-link">
           <Lockup key={landed?'home':'placeholder'} animated={landed} className={`header-lockup ${landed?'':'invisible'}`} aria-hidden="true" />
         </a>
@@ -98,7 +107,7 @@ export default function App() {
       <ScrollRibbon active={settings.showRibbon && stage==='live' && route.slug === null} />
       {fallback && <p role="status" className="content-notice">Показана сохранённая версия портфолио: свежие данные сейчас недоступны.</p>}
       <Colophon city={profile.city} name={profile.name} />
-      <SoundReplay live={stage==='live' && !route.slug} onReplay={()=>{window.scrollTo({top:0,behavior:'instant'});setCurtain(true);setStage('intro')}} />
+      <SoundReplay live={stage==='live' && !route.slug} onReplay={()=>{clearIntroTimers();window.scrollTo({top:0,behavior:'instant'});setCurtain(true);setStage('intro')}} />
     </div>
     {route.slug !== null && (project ? <CasePage key={project.slug} project={project} next={next} profile={profile} onOpen={route.open} onHome={route.home} /> : <main className="missing-case"><p className="eyebrow">Работа не найдена</p><h1>Похоже, этот лист<br />ещё не на выставке.</h1><button type="button" onClick={route.home}>← Ко всем работам</button></main>)}
   </EditBridgeContext.Provider>
