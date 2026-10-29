@@ -1,0 +1,25 @@
+{
+  "final_exact_pixels": true,
+  "s_finish_difference_bbox": [
+    386,
+    3,
+    524,
+    138
+  ],
+  "1440_handoff_above_curtain": true,
+  "1440_overflow": false,
+  "1440_finished": true,
+  "1440_unlocked": true,
+  "1440_reload_skips": true,
+  "390_handoff_above_curtain": true,
+  "390_overflow": false,
+  "390_finished": true,
+  "390_unlocked": true,
+  "390_reload_skips": true,
+  "reduced_motion_skips": true,
+  "keyboard_skip_unlocks": true,
+  "no_frames_guard_unlocks": true,
+  "case_reload_works": true,
+  "admin_loads": true,
+  "errors": []
+}
