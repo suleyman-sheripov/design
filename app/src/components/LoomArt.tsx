@@ -51,16 +51,15 @@ export function LoomArt({ active }: {active:boolean}) {
           const breadth=(28+13*Math.sin(t*Math.PI))*(1-.55*t*t)
           return {x,y,breadth}
         })
-        for(let i=0;i<120;i++) {
-          const a=samples[i], b=samples[i+1]
-          const light=.5+.5*Math.sin(i/120*Math.PI*2-time*.35)
-          ctx.beginPath()
-          ctx.moveTo(a.x,a.y-a.breadth);ctx.lineTo(b.x,b.y-b.breadth)
-          ctx.lineTo(b.x,b.y+b.breadth);ctx.lineTo(a.x,a.y+a.breadth);ctx.closePath()
-          ctx.fillStyle=`rgb(${Math.round(55+light*45)},${Math.round(76+light*42)},${Math.round(54+light*40)})`
-          ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=1.5
-          ctx.fill();ctx.stroke()
+        const paint=ctx.createLinearGradient(samples[0].x,0,samples[samples.length-1].x,0)
+        for(let i=0;i<=12;i++) {
+          const light=.5+.5*Math.sin(i/12*Math.PI*2-time*.35)
+          paint.addColorStop(i/12,`rgb(${Math.round(55+light*45)},${Math.round(76+light*42)},${Math.round(54+light*40)})`)
         }
+        ctx.beginPath()
+        samples.forEach((p,i)=>i?ctx.lineTo(p.x,p.y-p.breadth):ctx.moveTo(p.x,p.y-p.breadth))
+        for(let i=samples.length-1;i>=0;i--) {const p=samples[i];ctx.lineTo(p.x,p.y+p.breadth)}
+        ctx.closePath();ctx.fillStyle=paint;ctx.fill()
         // Девять линий дают ритм без плотной сетки и дополнительных подписей.
         for(let n=0;n<9;n++) {
           const offset=n-4

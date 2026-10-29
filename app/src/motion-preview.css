@@ -14,3 +14,9 @@ button:hover { opacity:.65; }
 .motion-preview input { width:min(440px,45vw); height:2px; accent-color:var(--color-sky); cursor:pointer; }
 .motion-time { font-variant-numeric:tabular-nums; font-size:10px; min-width:64px; text-align:right; opacity:.55; }
 @media(max-width:600px) { .motion-preview { padding:16px 24px; } .motion-stage svg { width:86vw; } .motion-preview footer { gap:16px; } .motion-preview header { gap:16px; } .motion-preview header>span { max-width:120px; } .motion-preview input { min-width:0; flex:1; } }
+
+.motion-preview-actions { display:flex; align-items:center; gap:20px; }
+.motion-sound-status:empty { display:none; }
+.motion-sound-status { font-size:11px; text-align:right; }
+
+.motion-preview-actions button { display:inline-flex; align-items:center; gap:6px; }

@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Typed } from './Typed'
 import { Cta } from './Cta'
 import { LoomArt } from './LoomArt'
 import { type Profile } from '../data'
 import { useSiteSettings } from '../lib/settings'
 
-export function Hero({ start, profile }: { start: boolean; profile: Profile }) {
+export function Hero({ start, profile, onInquiry, children }: { start: boolean; profile: Profile; onInquiry: () => void; children?: ReactNode }) {
   const { settings, services } = useSiteSettings()
   const words = profile.name.toLocaleUpperCase('ru-RU').split(' ')
   const script = useMemo(() => [{type:'write' as const, text:profile.role.toLocaleUpperCase('ru-RU')}], [profile.role])
@@ -23,12 +23,13 @@ export function Hero({ start, profile }: { start: boolean; profile: Profile }) {
         <div className="kinetic-art"><LoomArt active={start} /></div>
         <div className="kinetic-actions">
           <a className="kinetic-work-link" href="#work">{settings.heroWork} <span aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 5 19 19M5 19h14V5" stroke="currentColor" strokeWidth="1.5" /></svg></span></a>
-          <Cta href="#contact">{settings.heroContact}</Cta>
+          <Cta onClick={onInquiry}>{settings.heroContact}</Cta>
         </div>
       </div>
       <nav hidden={!settings.showServices} className="kinetic-disciplines" aria-label="Направления дизайна">
         {services.filter(s => s.hero).map(s => <a key={s.id} href={`#service-${s.id}`}>{s.title}</a>)}
       </nav>
+      {children}
     </div>
   </section>
 }

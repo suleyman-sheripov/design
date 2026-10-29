@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-type Vertex = {x:number; y:number; z:number; twist:number; card?:number}
+import { smoothRibbonPath, type RibbonVertex as Vertex } from '../lib/ribbonGeometry'
 const clamp=(n:number)=>Math.max(0,Math.min(1,n))
 // Лента — поверхность из граней с поворотом сечения и двумя слоями глубины.
 // Координаты привязаны к реальным обложкам, а не к длине страницы.
@@ -24,8 +24,11 @@ export function ScrollRibbon({active}:{active:boolean}) {
       if(!work || work.top>h || work.bottom<0) return
       const cards=[...document.querySelectorAll('.exhibit .project-art')].map(e=>e.getBoundingClientRect()).sort((a,b)=>a.top-b.top)
       const title=document.querySelector('.exhibition-head h2')?.getBoundingClientRect()
-      const strokes=(vertices:Vertex[],head:number,tail:number,halfWidth:number)=>{
-        const lo=Math.max(0,Math.floor(head-tail)),hi=Math.min(vertices.length-1,Math.ceil(head))
+      const strokes=(source:Vertex[],head:number,tail:number,halfWidth:number)=>{
+        const vertices=smoothRibbonPath(source)
+        const first=vertices.findIndex(p=>p.sourceIndex>=Math.max(0,head-tail))
+        const last=vertices.findIndex(p=>p.sourceIndex>=head)
+        const lo=first<0?vertices.length-1:first,hi=last<0?vertices.length-1:last
         if(hi<=lo)return
         const visible=vertices.slice(lo,hi+1)
         const gradient=ctx.createLinearGradient(Math.min(...visible.map(p=>p.x)),Math.min(...visible.map(p=>p.y)),Math.max(...visible.map(p=>p.x))+1,Math.max(...visible.map(p=>p.y))+1)
@@ -35,7 +38,7 @@ export function ScrollRibbon({active}:{active:boolean}) {
         const edges=vertices.map((p,n)=>{
           const a=vertices[Math.max(0,n-1)],b=vertices[Math.min(vertices.length-1,n+1)]
           const len=Math.hypot(b.x-a.x,b.y-a.y)||1
-          const t=clamp(Math.min((n-(head-tail))/18,(head-n)/12))
+          const t=clamp(Math.min((p.sourceIndex-(head-tail))/18,(head-p.sourceIndex)/12))
           const breadth=halfWidth*(.72+.28*Math.cos(p.twist)**2)*t*t*(3-2*t)
           return {x:p.x,y:p.y,dx:-(b.y-a.y)/len*breadth,dy:(b.x-a.x)/len*breadth}
         })
@@ -74,7 +77,7 @@ export function ScrollRibbon({active}:{active:boolean}) {
         })
       }
       const connect=(out:Vertex[],a:Vertex,b:Vertex,bend:number,direction:'down'|'up'|'right'='down')=>{
-        const prev=out[out.length-2]??{x:a.x-1,y:a.y}
+        const prev=out[out.length-2]??{x:a.x+1,y:a.y}
         const len=Math.hypot(a.x-prev.x,a.y-prev.y)||1,k=Math.abs(bend)
         const c1={x:a.x+(a.x-prev.x)/len*k,y:a.y+(a.y-prev.y)/len*k}
         const c2={x:b.x-(direction==='right'?k:0),y:b.y+(direction==='up'?k:direction==='down'?-k:0)}
@@ -83,7 +86,7 @@ export function ScrollRibbon({active}:{active:boolean}) {
       // Короткая самостоятельная сцена у заголовка: слева → виток → вправо.
       if(title && title.bottom>-100 && title.top<h) {
         const cx=title.left+title.width/2,cy=title.top+title.height/2
-        const rx=title.width*.56+20,ry=title.height*.8+22
+        const rx=title.width*.56+20,ry=Math.max(title.height*.8+22,Math.sqrt(rx*(w<680?13:22)*2))
         const v:Vertex[]=[{x:-120,y:cy-45,z:-1,twist:0}]
         connect(v,v[0],{x:cx-rx,y:cy,z:0,twist:.3},75,'up')
         for(let i=1;i<=120;i++){const t=i/120,a=Math.PI+t*Math.PI*2;v.push({x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a),z:Math.sin(a),twist:t*Math.PI*2+.3})}
@@ -96,7 +99,7 @@ export function ScrollRibbon({active}:{active:boolean}) {
       const v:Vertex[]=[{x:w+160,y:cards[0].top-70,z:-1,twist:0}]
       const anchors=[{y:cards[0].top-h*.2,index:0}]
       cards.forEach((r,index)=>{
-        const cx=r.left+r.width/2,cy=r.top+r.height*.45,rx=r.width*.55+12,ry=r.height*.35
+        const cx=r.left+r.width/2,cy=r.top+r.height*.45,rx=r.width*.55+24,ry=Math.max(r.height*.35,Math.sqrt((r.width*.55+24)*(w<680?14:25)*3))
         const first={x:cx+rx,y:cy,z:0,twist:index*2}
         connect(v,v[v.length-1],first,85)
         // Reuse the connector endpoint. Duplicate points give two different

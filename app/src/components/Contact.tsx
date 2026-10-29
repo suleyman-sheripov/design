@@ -18,7 +18,7 @@ const FALLBACK = {
   },
 }
 
-export function Contact({ profile }: { profile: Profile | null }) {
+export function Contact({ profile, onInquiry }: { profile: Profile | null; onInquiry: () => void }) {
   const { settings } = useSiteSettings()
   const invitation = settings.contactNote
   const invitationScript = useMemo(()=>[{ type:'write' as const, text:invitation }],[invitation])
@@ -30,7 +30,7 @@ export function Contact({ profile }: { profile: Profile | null }) {
   const section = useRef<HTMLElement>(null)
   const subtitle = useRef<HTMLParagraphElement>(null)
   const stage = useRef<HTMLDivElement>(null)
-  const action = useRef<HTMLAnchorElement>(null)
+  const action = useRef<HTMLButtonElement>(null)
   const cloth = useRef<ClothMotion>({ progress: 0, x: .5, y: .5, near: false })
   useEffect(() => () => clearTimeout(timer.current), [])
   useEffect(() => {
@@ -132,9 +132,9 @@ export function Contact({ profile }: { profile: Profile | null }) {
           cloth.current.near = e.pointerType === 'mouse'
         }} onPointerLeave={() => { cloth.current.near = false }}>
           <ContactCloth motion={cloth} />
-          <a ref={action} className="contact-write" href={`mailto:${c.email}`} data-cursor="link" data-cursor-label="Написать" aria-label="Написать Сулейману о проекте">
+          <button ref={action} type="button" onClick={onInquiry} aria-haspopup="dialog" className="contact-write" data-cursor="link" data-cursor-label="Написать" aria-label="Написать Сулейману о проекте">
             <span className="invite-surface"><span>{settings.contactButton}</span><span className="invite-arrow" aria-hidden="true">↗</span></span>
-          </a>
+          </button>
         </div>
         <div className="contact-address">
         <div className="contact-primary">
