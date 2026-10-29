@@ -29,22 +29,19 @@ export function ContactCloth({ motion }: { motion: RefObject<ClothMotion> }) {
           + (motion.current.y - .5) * height * .24 * proximity * pull
         const twist = t * Math.PI * 3 - phase
         const breadth = Math.min(height * .19, 45) * (.4 + .6 * Math.sin(t * Math.PI))
-          * (.28 + .72 * Math.abs(Math.cos(twist * .6)))
+          * (.28 + .72 * Math.sqrt(.04 + .96 * Math.cos(twist * .6) ** 2))
         return { x, y, breadth, twist }
       })
       ctx.clearRect(0, 0, width, height)
-      for (let i = 0; i < points.length - 1; i++) {
-        const a = points[i], b = points[i + 1]
-        const light = .5 + .5 * Math.sin(a.twist)
-        const shade = (shift: number) => `rgb(${Math.round(85 + light * 51 + shift)},${Math.round(107 + light * 46 + shift)},${Math.round(75 + light * 42 + shift)})`
-        const gradient = ctx.createLinearGradient(a.x, a.y - a.breadth, a.x, a.y + a.breadth)
-        gradient.addColorStop(0, shade(15)); gradient.addColorStop(.3, shade(4)); gradient.addColorStop(1, shade(-12))
-        ctx.beginPath()
-        ctx.moveTo(a.x, a.y - a.breadth); ctx.lineTo(b.x, b.y - b.breadth)
-        ctx.lineTo(b.x, b.y + b.breadth); ctx.lineTo(a.x, a.y + a.breadth); ctx.closePath()
-        ctx.fillStyle = gradient; ctx.strokeStyle = gradient; ctx.lineWidth = 1
-        ctx.fill(); ctx.stroke()
+      const paint=ctx.createLinearGradient(0,0,width,height)
+      for(let i=0;i<=16;i++) {
+        const light=.5+.5*Math.sin(i/16*Math.PI*3-phase)
+        paint.addColorStop(i/16,`rgb(${Math.round(85+light*51)},${Math.round(107+light*46)},${Math.round(75+light*42)})`)
       }
+      ctx.beginPath()
+      points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y-p.breadth):ctx.moveTo(p.x,p.y-p.breadth))
+      for(let i=points.length-1;i>=0;i--) {const p=points[i];ctx.lineTo(p.x,p.y+p.breadth)}
+      ctx.closePath();ctx.fillStyle=paint;ctx.fill()
       for (let n = 0; n <= 8; n++) {
         ctx.beginPath()
         points.forEach((point, i) => {

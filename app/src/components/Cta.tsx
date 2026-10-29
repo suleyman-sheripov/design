@@ -3,16 +3,18 @@ import { useFinePointer } from '../lib/pointer'
 import { Symbiote } from './Symbiote'
 
 // Базовая заливка видна и до запуска фильтра, и на сенсорном экране.
-export function Cta({ href, children }: { href: string; children: ReactNode }) {
-  const ref = useRef<HTMLAnchorElement>(null)
+export function Cta({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLButtonElement>(null)
   const fine = useFinePointer()
 
   return (
-    <a
+    <button
       ref={ref}
-      href={href}
+      type="button"
+      onClick={onClick}
+      aria-haspopup="dialog"
       data-cursor="link"
-      data-cursor-label="К контактам"
+      data-cursor-label="Обсудить"
       /* Мох вместо чернил: на почти пустом экране кнопка — самое
          крупное пятно, и оно же теперь несёт основную краску.
          6.6:1 кремового по мху, проходит AA. */
@@ -20,6 +22,6 @@ export function Cta({ href, children }: { href: string; children: ReactNode }) {
     >
       {fine && <Symbiote target={ref} />}
       <span className="relative z-1">{children}</span>
-    </a>
+    </button>
   )
 }

@@ -20,8 +20,6 @@
   87% { transform:translateY(-2px) scale(.98,1.03); }
 }
 @media(max-width:767px) {
-  .site-header { transition:margin-bottom .35s cubic-bezier(.22,.75,.2,1); }
-  .site-header:has(.contact-orbit[data-open="true"]) { margin-bottom:72px; }
   .header-actions { gap:12px; }
   .header-actions .header-nav { gap:14px; }
 }

@@ -42,9 +42,9 @@ with sync_playwright() as p:
   report[f'{width}_overflow']=pg.evaluate('document.documentElement.scrollWidth>innerWidth')
   report[f'{width}_finished']=pg.locator('.brand-intro').count()==0 and pg.locator('header[inert]').count()==0
   report[f'{width}_unlocked']=pg.evaluate('document.documentElement.style.overflow')==''
-  # reload skips the intro for an existing session
+  # A fresh homepage load replays the intro, even in an existing tab.
   pg.reload(wait_until='domcontentloaded');pg.wait_for_selector('.site-header');pg.clock.run_for(100)
-  report[f'{width}_reload_skips']=pg.locator('.brand-intro').count()==0
+  report[f'{width}_reload_plays']=pg.locator('.brand-intro').count()==1
   c.close()
  c=b.new_context(viewport={'width':390,'height':844},reduced_motion='reduce');pg=c.new_page()
  pg.goto(base,wait_until='networkidle');report['reduced_motion_skips']=pg.locator('.brand-intro').count()==0

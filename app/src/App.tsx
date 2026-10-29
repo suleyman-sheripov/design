@@ -19,7 +19,7 @@ import { SettingsContext } from './lib/settings'
 import { SoundReplay } from './components/SoundReplay'
 import { ScrollRibbon } from './components/ScrollRibbon'
 import { startAnalytics } from './lib/analytics'
-import { seenIntro, rememberIntro } from './lib/session'
+import { ProjectInquiry } from './components/ProjectInquiry'
 import { routeSlug, useCaseNavigation } from './lib/navigation'
 
 const LANDING_MS = 760
@@ -46,7 +46,11 @@ export default function App() {
     setProfile(bridge.document.profile)
     setProjects(bridge.document.projects.projects.filter(p=>p.status==='published'))
   }, [bridge.document])
-  const [stage,setStage] = useState<Stage>(() => routeSlug() || seenIntro() || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'live' : 'intro')
+  const [stage,setStage] = useState<Stage>(() => bridge.active || new URLSearchParams(location.search).has('editor-preview') || routeSlug() || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'live' : 'intro')
+  const [manualIntro,setManualIntro] = useState(false)
+  const [inquiryOpen,setInquiryOpen] = useState(false)
+  const openInquiry = useCallback(() => setInquiryOpen(true), [])
+  const closeInquiry = useCallback(() => setInquiryOpen(false), [])
   const [curtain,setCurtain] = useState(() => stage==='intro')
   useLayoutEffect(() => {
     if (!location.hash || location.hash === '#') window.scrollTo({top:0,behavior:'instant'})
@@ -72,7 +76,7 @@ export default function App() {
   useEffect(() => clearIntroTimers, [clearIntroTimers])
   const finishIntro = useCallback(()=>{
     clearIntroTimers()
-    rememberIntro();setStage('landing')
+    setStage('landing')
     introTimers.current = [
       setTimeout(()=>setStage('live'),LANDING_MS),
       setTimeout(()=>setCurtain(false),CURTAIN_FADE_MS+220),
@@ -86,7 +90,8 @@ export default function App() {
     {new URLSearchParams(location.search).has('editor-preview') && <div className="preview-notice">Предпросмотр · изменения ещё не опубликованы</div>}
     <GooDefs />{stage==='live' && <Cursor />}
     {curtain && <Curtain leaving={landed} />}
-    {stage==='intro' && <Intro onDone={finishIntro} />}
+    {stage==='intro' && <Intro onDone={finishIntro} manual={manualIntro} />}
+    <ProjectInquiry open={inquiryOpen} onClose={closeInquiry} email={profile.email} />
     <div className="portfolio-home" hidden={route.slug !== null}>
       <header inert={stage!=='live'} className={`site-header ${curtain && landed ? 'intro-landing' : ''}`}>
         <a href="#" aria-label={`${profile.name} — на главную`} className="brand-link">
@@ -98,16 +103,17 @@ export default function App() {
         </div>
       </header>
       <main inert={stage!=='live'}>
-        <Hero start={stage==='live'} profile={profile} />
+        <Hero start={stage==='live'} profile={profile} onInquiry={openInquiry}>
+        <SoundReplay live={stage==='live' && !route.slug} onReplay={()=>{clearIntroTimers();setManualIntro(true);window.scrollTo({top:0,behavior:'instant'});setCurtain(true);setStage('intro')}} />
+        </Hero>
         <Work projects={projects} onOpen={route.open} />
         {settings.showExperience && <Experience track={profile.track} />}
         {settings.showServices && <Skills />}
-        <Contact profile={profile} />
+        <Contact profile={profile} onInquiry={openInquiry} />
       </main>
       <ScrollRibbon active={settings.showRibbon && stage==='live' && route.slug === null} />
       {fallback && <p role="status" className="content-notice">Показана сохранённая версия портфолио: свежие данные сейчас недоступны.</p>}
       <Colophon city={profile.city} name={profile.name} />
-      <SoundReplay live={stage==='live' && !route.slug} onReplay={()=>{clearIntroTimers();window.scrollTo({top:0,behavior:'instant'});setCurtain(true);setStage('intro')}} />
     </div>
     {route.slug !== null && (project ? <CasePage key={project.slug} project={project} next={next} profile={profile} onOpen={route.open} onHome={route.home} /> : <main className="missing-case"><p className="eyebrow">Работа не найдена</p><h1>Похоже, этот лист<br />ещё не на выставке.</h1><button type="button" onClick={route.home}>← Ко всем работам</button></main>)}
   </EditBridgeContext.Provider>
