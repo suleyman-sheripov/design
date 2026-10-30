@@ -1,11 +1,11 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo } from 'react'
 import { Typed } from './Typed'
 import { Cta } from './Cta'
 import { LoomArt } from './LoomArt'
 import { type Profile } from '../data'
 import { useSiteSettings } from '../lib/settings'
 
-export function Hero({ start, profile, onInquiry, children }: { start: boolean; profile: Profile; onInquiry: () => void; children?: ReactNode }) {
+export function Hero({ start, profile, onInquiry }: { start: boolean; profile: Profile; onInquiry: () => void }) {
   const { settings, services } = useSiteSettings()
   const words = profile.name.toLocaleUpperCase('ru-RU').split(' ')
   const script = useMemo(() => [{type:'write' as const, text:profile.role.toLocaleUpperCase('ru-RU')}], [profile.role])
@@ -29,7 +29,6 @@ export function Hero({ start, profile, onInquiry, children }: { start: boolean; 
       <nav hidden={!settings.showServices} className="kinetic-disciplines" aria-label="Направления дизайна">
         {services.filter(s => s.hero).map(s => <a key={s.id} href={`#service-${s.id}`}>{s.title}</a>)}
       </nav>
-      {children}
     </div>
   </section>
 }

@@ -10,6 +10,15 @@ with sync_playwright() as p:
  page=b.new_page(viewport={'width':1440,'height':900},device_scale_factor=1)
  page.on('pageerror',lambda e: errors.append(str(e)))
  page.goto(base+'brand-motion/index.html')
+ page.locator('input').fill('2.3')
+ assert page.locator('[data-letter]').count()==6
+ page.evaluate("""() => {for(const e of document.querySelectorAll('[data-letter]')){e.removeAttribute('transform');e.removeAttribute('style');e.setAttribute('opacity','1')} document.querySelector('.motion-stage svg>g').removeAttribute('transform');document.querySelector('.logo-terminal-dot').setAttribute('cx','4759.5')}""")
+ split=Image.open(io.BytesIO(page.locator('.motion-stage svg').screenshot())).convert('RGB')
+ page.locator('input').fill('3.72')
+ whole=Image.open(io.BytesIO(page.locator('.motion-stage svg').screenshot())).convert('RGB')
+ # Separate paths rasterize edge antialiasing slightly differently; silhouettes
+ # and counters must agree within 8/255 (observed maximum 7, average < .01).
+ report['split_contours_match']=max(v[1] for v in ImageChops.difference(split,whole).getextrema())<=8
  page.locator('input').fill('3.72')
  page.locator('.motion-stage svg').screenshot(path=str(out/'final-animated.png'))
  page.evaluate('''() => {document.querySelectorAll('svg [clip-path],svg [mask]').forEach(e=>{e.removeAttribute('clip-path');e.removeAttribute('mask')})}''')

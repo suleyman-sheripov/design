@@ -20,6 +20,8 @@ function sweep(v: number) {
   }
   return smooth((low + high) / 2)
 }
+// Each complete silhouette unfurls into its own place; no shared wipe edge.
+export const LETTER_STARTS = [2.00, 2.17, 2.23, 2.35, 2.51, 2.65]
 export function frameAt(t: number) {
   const travel = sweep(phase(t, T.sweep, T.stop))
   const dotX = DOT_START + (DOT_END - DOT_START) * travel
@@ -31,9 +33,14 @@ export function frameAt(t: number) {
     hRight: smooth(phase(t, 1.14, T.hEnd)),
     dot: smooth(phase(t, 1.38, 1.58)),
     dotX,
-    // Keep letters behind the dot; release the V tip as the dot reaches its final cutout.
-    wordEdge: dotX - DOT_RADIUS + 2 * DOT_RADIUS * smooth(phase(t, T.stop - .18, T.stop)),
-    wordVisible: t >= T.sweep,
+    letters: LETTER_STARTS.map(start => {
+      const p = phase(t, start, start + .29)
+      const settle = 1 - (1 - p) ** 3
+      return { opacity: smooth(phase(p, 0, .65)), x: 35 * (1 - settle),
+        y: -48 * (1 - settle), rotation: -12 * (1 - settle),
+        scaleX: .62 + .38 * settle, scaleY: .92 + .08 * settle,
+        blur: 7 * (1 - settle) }
+    }),
     offset: (DOT_END - dotX) / 2,
   }
 }

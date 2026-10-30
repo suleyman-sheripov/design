@@ -569,7 +569,7 @@ html[data-page-changing] .case-cover-caption,html[data-page-changing] .case-navi
 .site-header.intro-landing { z-index:51; }
 .site-header.intro-landing .header-actions { visibility:hidden; }
 
-.intro-replay { position:relative; z-index:2; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:0 20px; padding:0 var(--gutter) 14px; color:var(--color-ink-muted); font-size:11px; }
+.intro-replay { position:relative; z-index:2; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:0 20px; padding:6px var(--gutter) 24px; color:var(--color-ink-muted); font-size:11px; }
 .intro-replay button { display:inline-flex; align-items:center; gap:6px; min-height:44px; border:0; background:none; color:inherit; font:inherit; cursor:pointer; text-decoration:underline; text-underline-offset:4px; }
 .intro-replay button:hover { color:var(--color-ink); }
 .intro-replay button:disabled { opacity:.45; cursor:default; }

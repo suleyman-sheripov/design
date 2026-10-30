@@ -103,9 +103,7 @@ export default function App() {
         </div>
       </header>
       <main inert={stage!=='live'}>
-        <Hero start={stage==='live'} profile={profile} onInquiry={openInquiry}>
-        <SoundReplay live={stage==='live' && !route.slug} onReplay={()=>{clearIntroTimers();setManualIntro(true);window.scrollTo({top:0,behavior:'instant'});setCurtain(true);setStage('intro')}} />
-        </Hero>
+        <Hero start={stage==='live'} profile={profile} onInquiry={openInquiry} />
         <Work projects={projects} onOpen={route.open} />
         {settings.showExperience && <Experience track={profile.track} />}
         {settings.showServices && <Skills />}
@@ -114,6 +112,7 @@ export default function App() {
       <ScrollRibbon active={settings.showRibbon && stage==='live' && route.slug === null} />
       {fallback && <p role="status" className="content-notice">Показана сохранённая версия портфолио: свежие данные сейчас недоступны.</p>}
       <Colophon city={profile.city} name={profile.name} />
+      <SoundReplay live={stage==='live' && !route.slug} onReplay={()=>{clearIntroTimers();setManualIntro(true);window.scrollTo({top:0,behavior:'instant'});setCurtain(true);setStage('intro')}} />
     </div>
     {route.slug !== null && (project ? <CasePage key={project.slug} project={project} next={next} profile={profile} onOpen={route.open} onHome={route.home} /> : <main className="missing-case"><p className="eyebrow">Работа не найдена</p><h1>Похоже, этот лист<br />ещё не на выставке.</h1><button type="button" onClick={route.home}>← Ко всем работам</button></main>)}
   </EditBridgeContext.Provider>

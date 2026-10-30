@@ -38,10 +38,16 @@ with sync_playwright() as p:
   report[f'{w}_form_returns_focus']=cta.evaluate('e=>e===document.activeElement')
   cta.click();pg.wait_for_selector('dialog:modal');report[f'{w}_form_keeps_text']=pg.locator('[name=name]').input_value()=='Анна & Co'
   pg.get_by_role('button',name='Закрыть форму').click()
+  report[f'{w}_replay_is_last']=pg.locator('.intro-replay').evaluate("e=>e===document.querySelector('.portfolio-home').lastElementChild && e.getBoundingClientRect().top>=document.querySelector('.portfolio-home footer').getBoundingClientRect().bottom")
+  pg.locator('.intro-replay').scroll_into_view_if_needed();pg.wait_for_timeout(300)
+  pg.screenshot(path=str(out/f'footer-{w}.png'))
+  return_y=pg.evaluate('scrollY')
   pg.get_by_role('button',name='Заставка со звуком',exact=True).click();pg.wait_for_selector('.brand-intro')
   pg.wait_for_function('audioProbe.sources.length===1')
   report[f'{w}_real_stereo_sound']=pg.evaluate('audioProbe.sources[0].node.buffer.numberOfChannels===2 && audioProbe.sources[0].node.buffer.duration>3.7')
   skip(pg);pg.wait_for_function('audioProbe.sources.every(s=>s.ended)');report[f'{w}_skip_stops_audio']=True
+  report[f'{w}_replay_restores_footer']=abs(pg.evaluate('scrollY')-return_y)<2
+  report[f'{w}_replay_restores_focus']=pg.get_by_role('button',name='Заставка со звуком',exact=True).evaluate('e=>e===document.activeElement')
   pg.get_by_role('button',name='Смотреть заставку').click();pg.wait_for_selector('.brand-intro');pg.wait_for_timeout(250)
   report[f'{w}_silent_replay']=pg.evaluate('audioProbe.sources.length')==1;skip(pg)
   pg.wait_for_timeout(1200);pg.screenshot(path=str(out/f'hero-{w}.png'))
