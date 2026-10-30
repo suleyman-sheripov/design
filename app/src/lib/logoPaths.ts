@@ -1,4 +1,6 @@
 // Exact contours from the owner’s October 2026 SVG masters.
+// Optical S/H spacing correction; all subsequent letters and the dot move together.
+export const SH_SPACING = 40
 export const H_PATH = "M1018.2,60v290h-208V60h-172v301.6l.8.4c65.2,37.6,105.4,107.2,105.4,182.5h-.1c0,41.1-12,81.2-34.3,115.4h100.2v-170h208v170h172V60h-172Z"
 export const S_PATH = "M708.3,543.6c0,42-13.7,82.9-39.1,116.4h-171.1c33.7-75.9,4.9-165.1-66.8-207l-96.4-56.2c-86.6-50.5-115.8-161.7-65.3-248.3,28.3-48.6,77.6-81.3,133.4-88.5h50.1c-62,40.5-79.5,123.6-39.1,185.6,11.5,17.7,27,32.4,45.3,42.9l152.7,88.1c59.6,34.4,96.4,98,96.4,166.9h0Z"
 export const LOWER_PATH = "M282.5,660c-36.6-36.7-36.4-96.1.3-132.7,36.7-36.6,96.1-36.4,132.7.3,36.4,36.6,36.4,95.8,0,132.4h-133Z"

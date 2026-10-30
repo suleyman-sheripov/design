@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { H_PATH, S_PATH, LOWER_PATH, WORD_PATH } from '../lib/logoPaths'
+import { H_PATH, S_PATH, LOWER_PATH, WORD_PATH, SH_SPACING } from '../lib/logoPaths'
 import type { IntroFrame } from '../lib/introSim'
 
 // The viewBox includes the O's optical overshoot; no typeset substitute is used.
@@ -13,7 +13,7 @@ const letters = [
   { d: contours[0] + contours[6], pivot: 3778.3 },
   { d: contours[4], pivot: 4472.1 },
 ]
-export const LOGO_VIEWBOX = '242.84049 52 4604.65951 616'
+export const LOGO_VIEWBOX = `242.84049 52 ${4604.65951 + SH_SPACING} 616`
 export function BrandLogo({ frame, className = '' }: { frame?: IntroFrame; className?: string }) {
   const id = useId().replace(/:/g, '')
   const s = `${id}-s`, h = `${id}-h`
@@ -31,6 +31,7 @@ export function BrandLogo({ frame, className = '' }: { frame?: IntroFrame; class
     <g transform={frame ? `translate(${frame.offset} 0)` : undefined} fill="currentColor">
       <path d={S_PATH} mask={frame && frame.stroke < 1 ? `url(#${s})` : undefined} />
       <path d={LOWER_PATH} style={frame ? { clipPath: `inset(${(1 - frame.lower) * 100}% 0 0 0)` } : undefined} />
+      <g data-logo-spacing transform={`translate(${SH_SPACING} 0)`}>
       <path d={H_PATH} clipPath={frame && frame.hRight < 1 ? `url(#${h})` : undefined} />
       {frame && frame.letters.some(letter => letter.opacity < 1 || letter.x > 0) ? letters.map((letter, index) => {
         const pose = frame.letters[index]
@@ -39,6 +40,7 @@ export function BrandLogo({ frame, className = '' }: { frame?: IntroFrame; class
           style={pose.blur > .05 ? { filter: `blur(${pose.blur}px)` } : undefined} />
       }) : <path d={WORD_PATH} />}
       <circle className="logo-terminal-dot" cx={frame?.dotX ?? 4759.5} cy="574" r={86 * (frame?.dot ?? 1)} fill="var(--color-sky, #2f6182)" />
+      </g>
     </g>
   </svg>
 }

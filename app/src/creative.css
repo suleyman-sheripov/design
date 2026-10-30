@@ -22,7 +22,7 @@
 .loom-mark { display:block; width:100%; height:auto; filter:drop-shadow(3px 5px 3px #16130f1c); }
 .loom-paint { position:absolute; pointer-events:none; }
 .loom-mark path { fill:url(#loom-mark-gradient); }
-.loom-dot { position:absolute; left:106.77%; bottom:0; width:18.195%; aspect-ratio:1; border-radius:50%; background:var(--color-sky); box-shadow:2px 4px 5px #16130f24; }
+.loom-dot { position:absolute; left:106.495%; bottom:0; width:17.4556%; aspect-ratio:1; border-radius:50%; background:var(--color-sky); box-shadow:2px 4px 5px #16130f24; }
 .brand-dot { box-shadow:1px 2px 2px #16130f18; }
 .kinetic-actions { display:flex; align-items:center; justify-content:center; gap:55px; margin-top:14px; padding:16px 0; }
 .kinetic-work-link { display:inline-flex; align-items:center; justify-content:space-between; gap:30px; min-height:48px; font-size:13px; text-decoration:none; border-bottom:1px solid var(--color-rule); }
@@ -509,10 +509,10 @@ html[data-page-changing] .case-cover-caption,html[data-page-changing] .case-navi
   .contact-type-ink { display:none; }
 }
 .contact-cloth { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-.journey-brand { display:flex; align-items:flex-end; gap:3.25px; width:64px; flex-shrink:0; color:var(--color-moss); }
+.journey-brand { display:flex; align-items:flex-end; gap:3.118px; width:64px; flex-shrink:0; color:var(--color-moss); }
 .journey-brand svg { width:48px; height:auto; }
-.journey-brand i { width:8.73px; height:8.73px; border-radius:50%; background:var(--color-sky); box-shadow:0 2px 3px #26352820; }
-@media (max-width:680px) { .journey-brand { width:46px; gap:2.37px; } .journey-brand svg { width:35px; } .journey-brand i { width:6.37px; height:6.37px; } }
+.journey-brand i { width:8.379px; height:8.379px; border-radius:50%; background:var(--color-sky); box-shadow:0 2px 3px #26352820; }
+@media (max-width:680px) { .journey-brand { width:46px; gap:2.273px; } .journey-brand svg { width:35px; } .journey-brand i { width:6.109px; height:6.109px; } }
 
 /* Формат плашки под устройство: больше места самому макету, спокойнее ракурс. */
 /* Простые фотографии-превью; декоративные устройства удалены. */
@@ -557,7 +557,7 @@ html[data-page-changing] .case-cover-caption,html[data-page-changing] .case-navi
 .brand-lockup { display:inline-block; width:5.76em; vertical-align:middle; }
 .brand-lockup svg { width:100%; height:auto; }
 .brand-intro { position:fixed; inset:0; z-index:50; display:grid; place-items:center; }
-.brand-intro-lockup { display:block; width:min(78vw,1040px); aspect-ratio:4604.65951 / 616; }
+.brand-intro-lockup { display:block; width:min(78vw,1040px); aspect-ratio:4644.65951 / 616; }
 .brand-intro-canvas, .brand-intro-canvas svg { display:block; width:100%; height:100%; overflow:visible; }
 .brand-curtain { position:fixed; inset:0; z-index:40; background:var(--color-paper); transition:opacity 450ms ease; }
 .brand-curtain.is-leaving { opacity:0; pointer-events:none; transition-delay:650ms; }
