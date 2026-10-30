@@ -20,7 +20,7 @@ export function smoothRibbonPath(source: RibbonVertex[], step = 5, sigma = 22) {
   const radius = Math.ceil(3 * sigma / spacing)
   const weights = Array.from({ length: radius * 2 + 1 }, (_, i) => Math.exp(-.5 * ((i - radius) * spacing / sigma) ** 2))
   return samples.map((point, i) => {
-    let x = 0, y = 0, sum = 0
+    let x = 0, y = 0, twist = 0, sum = 0
     for (let k = -radius; k <= radius; k++) {
       const n = i + k
       // Linear extrapolation preserves the endpoints of open, offscreen paths.
@@ -29,8 +29,8 @@ export function smoothRibbonPath(source: RibbonVertex[], step = 5, sigma = 22) {
       if (n < 0) { sx += n * (samples[1].x - samples[0].x); sy += n * (samples[1].y - samples[0].y) }
       if (n >= samples.length) { const last = samples.length - 1; sx += (n - last) * (samples[last].x - samples[last - 1].x); sy += (n - last) * (samples[last].y - samples[last - 1].y) }
       const weight = weights[k + radius]
-      x += sx * weight; y += sy * weight; sum += weight
+      x += sx * weight; y += sy * weight; twist += sample.twist * weight; sum += weight
     }
-    return { ...point, x: x / sum, y: y / sum }
+    return { ...point, x: x / sum, y: y / sum, twist: twist / sum }
   })
 }
