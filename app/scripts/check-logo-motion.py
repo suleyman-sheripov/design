@@ -45,7 +45,7 @@ with sync_playwright() as p:
     # Read the actual rendered pixel at the terminal dot's center instead.
     box=pg.locator('.brand-lockup svg').bounding_box()
     shot=Image.open(io.BytesIO(pg.screenshot())).convert('RGB')
-    point=(round(box['x']+(4759.5-242.84049)/4604.65951*box['width']),round(box['y']+(574-52)/616*box['height']))
+    point=(round(box['x']+(4799.5-242.84049)/4644.65951*box['width']),round(box['y']+(574-52)/616*box['height']))
     report[f'{width}_handoff_above_curtain']=sum(abs(a-b) for a,b in zip(shot.getpixel(point),(47,97,130)))<20
    if t in [1500,2200,3700,3950,4100,5200]:pg.screenshot(path=str(out/f'site-{width}-{t}.png'))
   report[f'{width}_overflow']=pg.evaluate('document.documentElement.scrollWidth>innerWidth')
